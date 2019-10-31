@@ -1,105 +1,196 @@
+'''
+@File    :   login.py
+@start   :   2019/11/01 00:16:41
+@Author  :   Jiang Xin 
+@Version :   1.0
+@Contact :   gental_j@163.com
+@License :   (C)Copyright 2018-2019, JiangXin
+@Desc    :   Just for login CAERI device website and keep alive
+'''
 import requests
 import re
 import os
-import tkinter as tk
-from PIL import Image, ImageTk
-from time import sleep
+import json
+import time
+from PIL import Image
 
 # Request URL: https://open.work.weixin.qq.com/wwopen/sso/qrConnect?appid=ww80c0c4961a9e94c4&agentid=1000008&
 # redirect_uri=http://deviceman.caeri.com.cn:6037/Index/login.html&state=IA07382995555793
 
-session = requests.Session()
+
+class loginInit:
+    def __init__(self, headers):
+
+        self.session = requests.Session()
+
+        self.headers = headers
+        self.cookies = {
+            "thinkphp_show_page_trace": "0|0",
+        }
+
+        self.urls = {
+            "baseUrl":  "https://open.work.weixin.qq.com/wwopen/sso/qrConnect"
+        }
+
+        self._appid = 'ww80c0c4961a9e94c4'
+        self._agentid = '1000008'
+
+        self._redirect = 'http://deviceman.caeri.com.cn:6037/Index/login.html'
+        self._rand_url = "http://deviceman.caeri.com.cn:6037/Index/get_rand.html"
+
+    def login_index(self):
+
+        response = self.session.get(url=self._redirect, headers=self.headers)
+
+        if response.status_code != requests.codes.OK:
+            print(f"获取登录页失败:{response.status_code}")
+            return False
+        # update cookies
+        self.cookies.update(response.cookies)
+
+        # 获取随机生成码
+        response = self.session.get(self._rand_url,
+                                    headers=headers,
+                                    cookies=self.cookies)
+        self._state = response.text
+        # self.cookies.update(response.cookies)
+
+        # 从网站抓取二维码图片登录
+        '''
+        返回base url 以及 验证是否登录的key值
+        '''
+        # <img class="qrcode lightBorder" src="//open.work.weixin.qq.com/wwopen/sso/qrImg?key=6abb43bb7ee10cdc">
+
+        regx = r'<img class="qrcode lightBorder" src="(.*?)">'
+        regx_key = '.*?key=(.*)'
+
+        response = self.session.get(url=self.urls['baseUrl'],
+                                    headers=headers,
+                                    cookies=self.cookies,
+                                    params={
+                                        'appid': self._appid,
+                                        'agentid': self._agentid,
+                                        'redirect_uri': self._redirect,
+                                        'state': self._state
+        })
+        imgUrl = 'http:' + re.search(regx, response.text).group(1)
+        key_in_imgurl = re.search(regx_key, imgUrl).group(1)
+        # print(requests.utils.dict_from_cookiejar(response.cookies))
+
+        self.urls.update({'imgUrl': imgUrl, 'key': key_in_imgurl})
+        # self.cookies.update(response.cookies)
+
+        # QrIamgeurl = 'https://' + uri + k_value
+
+        # 保存二维码并显示
+
+        QRImgPath = os.path.split(
+            os.path.realpath(__file__))[0] + os.sep + 'QrImage.jpg'
+        response = self.session.get(url=self.urls['imgUrl'],
+                                    headers=self.headers,
+                                    cookies=self.cookies)
+        self.cookies.update(response.cookies)
+
+        with open(QRImgPath, 'wb') as wf:
+            wf.write(response.content)
+            wf.close()
+
+        qr = Image.open(QRImgPath)
+        qr.show()
+        # time.sleep(10)
+        self.check_status(self.urls['key'])
+
+        response = self.session.get(
+            url="http://deviceman.caeri.com.cn:6037/Index/device_list.html",
+            headers=self.headers,
+            cookies=self.cookies)
+        cont = response.text
+        with open('index.html', 'w') as wf:
+            wf.writelines(cont)
+        # print(requests.utils.dict_from_cookiejar(response.cookies))
+        # print(cont)
+
+    def check_status(self, key):
+
+        # https://open.work.weixin.qq.com/wwopen/sso/l/qrConnect?callback=jsonpCallback&
+        # key=954ec9860d9326b5&redirect_uri=http%3A%2F%2Fdeviceman.caeri.com.cn%3A6037%2FIndex%2Flogin.html&
+        # appid=ww80c0c4961a9e94c4&_=1571997802388
+        #
+        # jsonpCallback({"status":"QRCODE_SCAN_SUCC","auth_code":"58BCceueQnUZL_nOw5IbQM6fYmpK3GIs8v-GQsWqC9E"})
+        regx = r'"status":"(.*?)","auth_code":"(.*?)"'
+        url = 'https://open.work.weixin.qq.com/wwopen/sso/l/qrConnect'
+        auth_code = ''
+
+        loctime = time.time() * 1000
+        response = self.session.get(url=url,
+                                    headers=self.headers,
+                                    params={
+                                        'callback': 'jsonpCallback',
+                                        'key': key,
+                                        'statusCode': 'QRCODE_SCAN_ING',
+                                        'redirect_uri': self._redirect,
+                                        'appid': self._appid,
+                                        'agentid': self._agentid,
+                                        '_': loctime
+                                    })
+        result = re.search(regx, response.text)
+
+        if result.group(1) == 'QRCODE_SCAN_NEVER':
+            print('请打开企业微信扫描二维码: {}'.format(result.group(1)))
+            self.check_status(self.urls['key'])
+
+        if result.group(1) == 'QRCODE_SCAN_ING':
+            print('扫码中请等待: {}'.format(result.group(1)))
+            time.sleep(1)
+            self.check_status(self.urls['key'])
+
+        if result.group(1) == 'QRCODE_SCAN_SUCC':
+            print('扫码成功: {}'.format(result.group(1)))
+
+            auth_code = result.group(2)
+
+            response = self.session.get(url=self._redirect,
+                                        headers=self.headers,
+                                        params={
+                                            'switch': 1,
+                                            'code': auth_code,
+                                            'state': self._state,
+                                        })
+            regx = r'{"error":0,"info":"\d{11}"}'
+            if response.status_code == 200:
+                if re.search(regx, response.text):
+                    print("登录成功")
+                    with open('cookies.json', 'w') as wf:
+                        json.dump(self.cookies, wf)
+                    print("cookies验证通过")
+                else:
+                    print('登录失败！')
 
 
-def getQRImageUrl():
-    '''
-    从网站抓取二维码图片地址
-    '''
+if __name__ == "__main__":
 
-    param = {
-        'appid': 'ww80c0c4961a9e94c4',
-        'agentid': '1000008',
-        'redirect_uri': 'http://deviceman.caeri.com.cn:6037/Index/login.html',
-        'state': get_state()
+    headers = {
+        "User-Agent":
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/75.0.3770.142 Safari/537.36",
+        'Connection': 'keep-alive',
     }
-    # <img class="qrcode lightBorder" src="//open.work.weixin.qq.com/wwopen/sso/qrImg?key=6abb43bb7ee10cdc">
-    regx = r'<img class="qrcode lightBorder" src="//(.*?)">'
 
-    request_url = 'https://open.work.weixin.qq.com/wwopen/sso/qrConnect?'
+    # 二维码本地保存地址
 
-    for name, value in param.items():
-        request_url = request_url + name + '=' + value + '&'
+    login = loginInit(headers)
+    login.login_index()
+    # c2 = login.coo()
+    # c1 = login.getCookies()
+    # time.sleep(10)
+    # c2 = login.getcontent(
+    #     url="http://deviceman.caeri.com.cn:6037/Index/device_list.html")
 
-    request_url = request_url[:-1]
-
-    r = session.get(request_url)
-
-    QRImage_url = re.search(regx, r.text)
-
-    return QRImage_url.group(1)
+    # with open('index.html', 'w') as wf:
 
 
-def get_state():
-    '''
-    获取随机生成码
-    '''
-    url = "http://deviceman.caeri.com.cn:6037/Index/get_rand.html"
+# for sec in range(15):
+#     time.sleep(1)
+#     print(sec)
 
-    r = session.get(url)
-    state = r.text
-
-    return state
-
-
-def showQRImage():
-    '''
-    弹出二维码图片，扫描登录
-    '''
-
-    QRImgPath = os.path.split(os.path.realpath(__file__))[
-        0] + os.sep + 'QrImage.jpg'
-
-    url = 'https://' + getQRImageUrl()
-
-    r = session.get(url)
-
-    with open(QRImgPath, 'wb') as f:
-        f.write(r.content)
-        f.close()
-
-    # qr = Image.open(QRImgPath)
-    # qr.show()
-
-    print('请使用企业微信扫描二维码以登录')
-
-
-def getCookies():
-    url = 'http://deviceman.caeri.com.cn:6037/Index/login.html'
-
-    r = session.get(url)
-    cookiejar = r.cookies
-
-    cookies = requests.utils.dict_from_cookiejar(cookiejar)
-    print(cookies)
-
-
-class Window(tk.Frame):
-    def __init__(self, master=None):
-        super().__init__(master, width=400, height=300)
-        self.pack()
-        self.pilImage = Image.open("QrImage.jpg")
-        self.tkImage = ImageTk.PhotoImage(image=self.pilImage)
-        self.label = tk.Label(self, image=self.tkImage)
-        self.label.pack()
-
-    # def processEvent(self, event):
-    #     pass
-
-
-# showQRImage()
-# root = tk.Tk()
-# app = Window(root)
-# root.mainloop()
-
-# sleep(3)
-getCookies()
+# if login.check_status(ImgKey):
+#     login.getCookies()
