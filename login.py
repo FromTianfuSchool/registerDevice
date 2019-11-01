@@ -29,11 +29,12 @@ class loginInit:
         }
 
         self.urls = {
-            "baseUrl":  "https://open.work.weixin.qq.com/wwopen/sso/qrConnect"
+            "baseUrl": "https://open.work.weixin.qq.com/wwopen/sso/qrConnect"
         }
 
         self._appid = 'ww80c0c4961a9e94c4'
         self._agentid = '1000008'
+        self._key = None
 
         self._redirect = 'http://deviceman.caeri.com.cn:6037/Index/login.html'
         self._rand_url = "http://deviceman.caeri.com.cn:6037/Index/get_rand.html"
@@ -72,12 +73,12 @@ class loginInit:
                                         'agentid': self._agentid,
                                         'redirect_uri': self._redirect,
                                         'state': self._state
-        })
+                                    })
         imgUrl = 'http:' + re.search(regx, response.text).group(1)
-        key_in_imgurl = re.search(regx_key, imgUrl).group(1)
+        self._key = re.search(regx_key, imgUrl).group(1)
         # print(requests.utils.dict_from_cookiejar(response.cookies))
 
-        self.urls.update({'imgUrl': imgUrl, 'key': key_in_imgurl})
+        self.urls.update({'imgUrl': imgUrl})
         # self.cookies.update(response.cookies)
 
         # QrIamgeurl = 'https://' + uri + k_value
@@ -91,22 +92,20 @@ class loginInit:
                                     cookies=self.cookies)
         self.cookies.update(response.cookies)
 
-        with open(QRImgPath, 'wb') as wf:
-            wf.write(response.content)
-            wf.close()
+        self._save(response.content, QRImgPath)
 
         qr = Image.open(QRImgPath)
         qr.show()
         # time.sleep(10)
-        self.check_status(self.urls['key'])
+        self.check_status(self._key)
 
         response = self.session.get(
             url="http://deviceman.caeri.com.cn:6037/Index/device_list.html",
             headers=self.headers,
             cookies=self.cookies)
         cont = response.text
-        with open('index.html', 'w') as wf:
-            wf.writelines(cont)
+        # with open('index.html', 'w') as wf:
+        #     wf.writelines(cont)
         # print(requests.utils.dict_from_cookiejar(response.cookies))
         # print(cont)
 
@@ -160,11 +159,19 @@ class loginInit:
             if response.status_code == 200:
                 if re.search(regx, response.text):
                     print("登录成功")
-                    with open('cookies.json', 'w') as wf:
-                        json.dump(self.cookies, wf)
-                    print("cookies验证通过")
+                    self._save(self.cookies, 'cookies.json')
                 else:
                     print('登录失败！')
+
+    def _save(self, obj, filename):
+
+        if obj.split('.')[-1] == 'json':
+            with open(filename, 'w') as wf:
+                json.dump(obj, filename)
+
+        else:
+            with open(filename, 'w') as wf:
+                wf.writelines(obj)
 
 
 if __name__ == "__main__":
@@ -186,7 +193,6 @@ if __name__ == "__main__":
     #     url="http://deviceman.caeri.com.cn:6037/Index/device_list.html")
 
     # with open('index.html', 'w') as wf:
-
 
 # for sec in range(15):
 #     time.sleep(1)
