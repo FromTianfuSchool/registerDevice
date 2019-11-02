@@ -51,35 +51,31 @@ class loginInit:
 
         # 获取随机生成码
         response = self.session.get(self._rand_url,
-                                    headers=headers,
+                                    headers=self.headers,
                                     cookies=self.cookies)
         self._state = response.text
         # self.cookies.update(response.cookies)
 
         # 从网站抓取二维码图片登录
-        '''
-        返回base url 以及 验证是否登录的key值
-        '''
         # <img class="qrcode lightBorder" src="//open.work.weixin.qq.com/wwopen/sso/qrImg?key=6abb43bb7ee10cdc">
 
         regx = r'<img class="qrcode lightBorder" src="(.*?)">'
         regx_key = '.*?key=(.*)'
 
         response = self.session.get(url=self.urls['baseUrl'],
-                                    headers=headers,
+                                    headers=self.headers,
                                     cookies=self.cookies,
                                     params={
                                         'appid': self._appid,
                                         'agentid': self._agentid,
                                         'redirect_uri': self._redirect,
                                         'state': self._state
-                                    })
+        })
         imgUrl = 'http:' + re.search(regx, response.text).group(1)
         self._key = re.search(regx_key, imgUrl).group(1)
         # print(requests.utils.dict_from_cookiejar(response.cookies))
 
         self.urls.update({'imgUrl': imgUrl})
-        # self.cookies.update(response.cookies)
 
         # QrIamgeurl = 'https://' + uri + k_value
 
@@ -96,7 +92,7 @@ class loginInit:
 
         qr = Image.open(QRImgPath)
         qr.show()
-        # time.sleep(10)
+
         self.check_status(self._key)
 
         response = self.session.get(
@@ -104,10 +100,8 @@ class loginInit:
             headers=self.headers,
             cookies=self.cookies)
         cont = response.text
-        # with open('index.html', 'w') as wf:
-        #     wf.writelines(cont)
+        self._save(cont, 'index.html')
         # print(requests.utils.dict_from_cookiejar(response.cookies))
-        # print(cont)
 
     def check_status(self, key):
 
@@ -141,7 +135,7 @@ class loginInit:
         if result.group(1) == 'QRCODE_SCAN_ING':
             print('扫码中请等待: {}'.format(result.group(1)))
             time.sleep(1)
-            self.check_status(self.urls['key'])
+            self.check_status(self._key)
 
         if result.group(1) == 'QRCODE_SCAN_SUCC':
             print('扫码成功: {}'.format(result.group(1)))
@@ -165,10 +159,13 @@ class loginInit:
 
     def _save(self, obj, filename):
 
-        if obj.split('.')[-1] == 'json':
+        if filename.split('.')[-1] == 'json':
             with open(filename, 'w') as wf:
-                json.dump(obj, filename)
+                json.dump(obj, wf)
 
+        elif filename.split('.')[-1] == 'jpg':
+            with open(filename, 'wb') as wf:
+                wf.write(obj)
         else:
             with open(filename, 'w') as wf:
                 wf.writelines(obj)
@@ -186,17 +183,3 @@ if __name__ == "__main__":
 
     login = loginInit(headers)
     login.login_index()
-    # c2 = login.coo()
-    # c1 = login.getCookies()
-    # time.sleep(10)
-    # c2 = login.getcontent(
-    #     url="http://deviceman.caeri.com.cn:6037/Index/device_list.html")
-
-    # with open('index.html', 'w') as wf:
-
-# for sec in range(15):
-#     time.sleep(1)
-#     print(sec)
-
-# if login.check_status(ImgKey):
-#     login.getCookies()
