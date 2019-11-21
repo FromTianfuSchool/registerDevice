@@ -1,0 +1,2 @@
+# registerDevice
+register device infomation
