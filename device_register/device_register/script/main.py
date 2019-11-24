@@ -19,6 +19,7 @@ from Ui_showQRcode import Ui_showQRcode
 from PIL import Image
 from threading import Thread
 import utils
+import os
 # from PyQt5 import uic
 
 # qtCreatorFile = "tax_calc.ui" # Enter file here.
@@ -77,6 +78,10 @@ class window(QtWidgets.QMainWindow, Ui_CAERIdevices):
         else:
             self.messages.append('你还没有登录，请扫码登录后再上传数据！')
 
+    def device_info(self):
+        os.startfile(utils.deviceinfoPath)
+        # os.system('start nnn {}'.format(utils.deviceinfoPath))
+
 
 class showQrcode(QtWidgets.QMainWindow, Ui_showQRcode):
     def __init__(self):
@@ -134,6 +139,7 @@ if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
     ui = window(showQrcode())
     ui.show()
+    ui.device_info()
     sys.exit(app.exec_())
     # # def add():
     # #     return 1+1
