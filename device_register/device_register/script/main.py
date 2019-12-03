@@ -1,7 +1,7 @@
 '''
 @File    :   main.py
 @start   :   2019/11/21 19:31:23
-@Author  :   Jiang Xin 
+@Author  :   Jiang Xin
 @Version :   1.0
 @Contact :   gental_j@163.com
 @License :   (C)Copyright 2018-2019, JiangXin
@@ -36,6 +36,8 @@ class window(QtWidgets.QMainWindow, Ui_CAERIdevices):
         self.upload.clicked.connect(self.upload_func)
         self.login.clicked.connect(self.open_childwindow)
         self.login.clicked.connect(self.childwindow.show)
+        self.childwindow.quitButton.clicked.connect(self.close_childwindow)
+        self.do_check = True
 
     def open_childwindow(self):
         if self.childwindow_open is False:
@@ -51,7 +53,7 @@ class window(QtWidgets.QMainWindow, Ui_CAERIdevices):
 
     def close_childwindow(self):
         if self.childwindow_open:
-            self.childwindow.close()
+            # self.childwindow.close()
             self.childwindow_open = False
             self.t1._terminate()
             # self.t1.join()
@@ -61,7 +63,10 @@ class window(QtWidgets.QMainWindow, Ui_CAERIdevices):
         def get_print(arg):
             self.messages.append(arg)
 
-        self.childwindow.confirm(get_print)
+        while(self.do_check):
+            if self.childwindow.confirm(get_print):
+                self.do_check = False
+            time.sleep(1)
 
     def upload_func(self):
         self.close_childwindow()
@@ -112,8 +117,10 @@ class showQrcode(QtWidgets.QMainWindow, Ui_showQRcode):
         lb1.setScaledContents(True)
 
     def confirm(self, func=None):
-
-        self.scan.check_status(func)
+        if self.scan.check_status(func):
+            return True
+        else:
+            return False
 
 
 class Lthread(Thread):

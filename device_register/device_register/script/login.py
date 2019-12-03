@@ -128,14 +128,15 @@ class loginInit():
         if result.group(1) == 'QRCODE_SCAN_ERR':
             func('请打开企业微信扫描二维码: {}'.format(result.group(1)))
             # response_code = 'ERR'
-            return
+            return False
         if result.group(1) == 'QRCODE_SCAN_NEVER':
             func('请打开企业微信扫描二维码: {}'.format(result.group(1)))
-            return
+            return False
 
         if result.group(1) == 'QRCODE_SCAN_ING':
             func('扫码中请在企业微信确认登录: {}'.format(result.group(1)))
-            return
+            time.sleep(2)
+            return False
 
         if result.group(1) == 'QRCODE_SCAN_SUCC':
             func('扫码成功: {}'.format(result.group(1)))
@@ -157,7 +158,7 @@ class loginInit():
                     return True
                 else:
                     func('登录失败！')
-                    return
+                    return False
 
     def _save(self, obj, filename):
 
