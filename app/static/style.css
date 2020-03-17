@@ -1,0 +1,264 @@
+html {
+    background: #bdbdbd;
+}
+
+h1 {
+    text-align: center;
+}
+
+p {
+    text-align: center;
+}
+
+#init {
+    height: 70%;
+    /*padding-left: 100px;*/
+    display: -webkit-box; /* Chrome 4+, Safari 3.1, iOS Safari 3.2+ */
+    display: -moz-box; /* Firefox 17- */
+    display: -webkit-flex; /* Chrome 21+, Safari 6.1+, iOS Safari 7+, Opera 15/16 */
+    display: -moz-flex; /* Firefox 18+ */
+    display: -ms-flexbox; /* IE 10 */
+    display: flex; /* Chrome 29+, Firefox 22+, IE 11+, Opera 12.1/17/18, Android 4.4+ */
+}
+
+#init_left {
+    flex: 1;
+}
+
+div.button_contain {
+    float: right;
+    padding-top: 1%;
+    padding-right: 0%;
+}
+
+div.line {
+    border-bottom: solid #333333 1px;
+}
+
+.devInfo {
+    padding-top: 1%;
+    padding-bottom: 1%;
+    font-weight: bolder;
+    float: left;
+    width: 80%;
+}
+
+#tableData {
+    height: 800px;
+    /*width: 100%;*/
+    padding-right: 0px;
+}
+#select2-select-num-container {
+    text-align: center;
+}
+/* ================================================================== */
+/*按钮*/
+
+.hbtn {
+    position: relative;
+    box-sizing: border-box;
+    display: inline-block;
+    overflow: hidden;
+    padding: 12px 14px;
+    margin: 0px 3px 6px;
+    text-align: center;
+    border: 2px solid rgb(255, 255, 255);
+    text-decoration: none;
+    color: #000000;
+    font-weight: bolder;
+    white-space: nowrap;
+    z-index: 0;
+}
+
+.hb-border-bottom-br4 {
+    position: relative;
+    transition-duration: 0.3s;
+    overflow: visible;
+    box-sizing: border-box;
+    border: none;
+    padding: 10px 22px;
+}
+
+.hb-border-bottom-br4::after {
+    box-sizing: border-box;
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    content: "";
+    border: 2px solid #555555d1;
+    z-index: 2;
+    margin: 0px;
+    left: 0px;
+    bottom: 0px;
+    border-top-width: 2px;
+    transition: border-top-width 0.1s ease 0.2s, height 0.2s ease 0.1s, width 0.2s ease 0s, margin 0.2s ease 0s, border-bottom-width 0.2s ease 0s;
+}
+
+.hb-border-bottom-br4:hover::after {
+    width: 60%;
+    height: 0px;
+    border-width: 0px 2px 4px;
+    margin: 0px 20%;
+    transition: border-top-width 0.1s ease 0s, height 0.2s ease 0.1s, width 0.2s ease 0.2s, margin 0.2s ease 0.2s, border-bottom-width 0.2s ease 0.2s;
+}
+
+.hbor1 {
+    border-width: 1px;
+}
+
+.hbor1::before {
+    border-width: 1px !important;
+}
+
+
+/*==================================================================*/
+
+/*弹出模态框*/
+button {
+    background-color: #4CAF50;
+    color: white;
+    padding: 14px 20px;
+    margin: 8px 0;
+    border: none;
+    cursor: pointer;
+    width: 20%;
+}
+
+button:hover {
+    opacity: 0.8;
+}
+
+/* Extra styles for the cancel button */
+.cancelbtn {
+    width: auto;
+    padding: 10px 18px;
+    margin-left: 20px;
+    background-color: #f44336;
+}
+
+.submitbtn {
+    width: auto;
+    padding: 10px 28px;
+    margin-right: 20px;
+}
+
+/* Center the image and position the close button */
+.imgcontainer {
+    text-align: center;
+    margin: 24px 0 12px 0;
+    position: relative;
+}
+
+.msgcontainer {
+    text-align: center;
+    margin: 24px 0 12px 0;
+    position: relative;
+}
+
+img.avatar {
+    width: 40%;
+    /*border-radius: 50%;*/
+}
+#status_img {
+    z-index: 999;
+}
+
+p.avatar {
+    font-size: 20px;
+}
+
+
+.container {
+    padding: 16px;
+}
+
+.dialog_container {
+    padding: 16px;
+    text-align: center;
+}
+
+.psw {
+    float: right;
+    padding-top: 16px;
+    /*background: none;*/
+}
+
+/* The Modal (background) */
+.modal {
+    display: none; /* Hidden by default */
+    /*position: fixed; !* Stay in place *!*/
+    position: fixed; /* Stay in place */
+    z-index: 999; /* Sit on top */
+    left: 0;
+    top: 0;
+    width: 100%; /* Full width */
+    height: 100%; /* Full height */
+    overflow: fragments; /* Enable scroll if needed */
+    background-color: rgb(0, 0, 0); /* Fallback color */
+    background-color: rgba(0, 0, 0, 0.4); /* Black w/ opacity */
+    padding-top: 60px;
+}
+
+/* Modal Content/Box */
+.modal-content {
+    background-color: #fefefe;
+    margin: 5% auto 15% auto; /* 5% from the top, 15% from the bottom and centered */
+    border: 1px solid #888;
+    width: 40%; /* Could be more or less, depending on screen size */
+}
+
+/* The Close Button (x) */
+.close {
+    position: absolute;
+    right: 25px;
+    top: 0;
+    color: #000;
+    font-size: 35px;
+    font-weight: bold;
+}
+
+.close:hover,
+.close:focus {
+    color: red;
+    cursor: pointer;
+}
+
+/* Add Zoom Animation */
+.animate {
+    -webkit-animation: animatezoom 0.6s;
+    animation: animatezoom 0.6s
+}
+
+@-webkit-keyframes animatezoom {
+    from {
+        -webkit-transform: scale(0)
+    }
+    to {
+        -webkit-transform: scale(1)
+    }
+}
+
+@keyframes animatezoom {
+    from {
+        transform: scale(0)
+    }
+    to {
+        transform: scale(1)
+    }
+}
+
+/* Change styles for span and cancel button on extra small screens */
+@media screen and (max-width: 300px) {
+    /*span.psw {*/
+    /*    display: block;*/
+    /*    float: none;*/
+    /*}*/
+
+    .cancelbtn .submitbtn {
+        width: 100%;
+    }
+}
+
+
+
+

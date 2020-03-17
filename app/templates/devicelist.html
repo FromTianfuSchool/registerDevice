@@ -1,0 +1,1404 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=1,user-scalable=no" />
+	<meta http-equiv="X-UA-Compatible" content="ie=edge" />
+	<link rel="stylesheet" type="text/css" href="/statics/layui/css/layui.css"/>
+	<link rel="stylesheet" type="text/css" href="/statics/css/pickDate.css?v=1583223317"/>
+	<link rel="stylesheet" type="text/css" href="/statics/css/pc_main.css?v=1583223317"/>
+	<script src="/statics/layui/layui.all.js" type="text/javascript" charset="utf-8"></script>
+	<script src="/statics/js/jquery.js" type="text/javascript" charset="utf-8"></script>
+	<script src="/statics/js/pc_main.js?v=1583223317" type="text/javascript" charset="utf-8"></script>
+	<style>
+        #think_page_trace_open{
+        	display: none;
+        }
+    </style>
+<title>设备日志</title>
+<style>
+.search-column .input .people_box {
+    display: block;
+    width: 210px;
+    min-height: 30px;
+    overflow: hidden;
+	float: left;
+}
+.search-column .input .people_box span {
+	padding: 2px 4px;
+	line-height: 30px;
+	margin-right: 10px;
+	background: #ebebeb;
+}
+.people_input{
+	width: 214px;
+    height: 30px;
+    z-index: 100;
+	position: absolute;
+    left: 85px;
+	bottom: -28px;
+	background: #fff;
+	padding: 0 10px;
+    border: 1px solid #ebebeb;
+	display: none;
+}
+.search-column .input-item .data-list.people_list{
+	padding-top: 30px;
+	bottom: -228px;
+	top: auto;
+}
+.layui-laydate-hint{
+	display: none;
+}
+</style>
+</head>
+
+<div class='container'>
+	<div class='search-column'>
+	<div class='input-item'>
+		<div class='title'>设备名称</div>
+		<div class='input'>
+			<input class='changeInput' autocomplete='off' id='name' placeholder='请输入设备名称' onclick="event.stopPropagation();" />
+			<img class='btn' id='choose_name' data-type='name' data-is_show='false' src='/statics/images/device/btn01.png' onclick="getSearchDataFun(this);event.stopPropagation();" />
+		</div>
+		<div class='data-list head-data-list name_list' data-type='name'>
+
+		</div>
+	</div>
+	<div class='input-item'>
+		<div class='title'>管理部门</div>
+		<div class='input'>
+			<input class='changeInput' autocomplete='off' id='dep' placeholder='请输入管理部门' onclick="event.stopPropagation();" />
+			<img class='btn' id='choose_dep' data-type='dep' data-is_show='false' src='/statics/images/device/btn01.png' onclick="getSearchDataFun(this);event.stopPropagation();" />
+		</div>
+		<div class='data-list head-data-list dep_list' data-type='dep'>
+
+		</div>
+	</div>
+	<div class='input-item'>
+		<div class='title'>设备编号</div>
+		<div class='input'>
+			<input class='changeInput' autocomplete='off' id='num' placeholder='请输入设备编号' onclick="event.stopPropagation();" />
+			<img class='btn' id='choose_num' data-type='num' data-is_show='false' src='/statics/images/device/btn01.png' onclick="getSearchDataFun(this);event.stopPropagation();" />
+		</div>
+		<div class='data-list head-data-list num_list' data-type='num'>
+
+		</div>
+	</div>
+	<div class='input-item clear-btn-item'>
+		<button class="clear-btn" onclick="clearSearchFun()">清空选择</button>
+	</div>
+</div>
+<script type="text/javascript">
+var search_key = '';
+var timeObj = '';
+var name_page = 1;
+var num_page = 1;
+var dep_page = 1;
+var is_loading = false;
+var action_name = "log_list";
+$(function(){
+	/**
+	 * 页面初始化时
+	 */
+	var DEVICEINFO = window.sessionStorage.getItem('DEVICEINFO');
+	if(DEVICEINFO){
+		DEVICEINFO = JSON.parse(DEVICEINFO);
+		publicPageInitFun(DEVICEINFO);
+	}
+
+	$("body").click(function(){
+		$(".head-data-list").hide();
+		$(".head-data-list").html("");
+		$(".search-column .input-item .input .btn").attr("data-is_show","false");
+		name_page = 1;
+		num_page = 1;
+		dep_page = 1;
+		initDataListFun();
+	})
+	$('.changeInput').bind('input propertychange', function(e) {
+		var _this = this;
+		if(timeObj){
+			clearTimeout(timeObj);
+		}
+		var id = e.currentTarget.id;
+		search_key = e.currentTarget.value;
+		timeObj = setTimeout(function(){
+			$(".head-data-list").hide();
+			$(".search-column .input-item .input .btn").attr("data-is_show","false");
+    		name_page = 1;
+    		num_page = 1;
+    		dep_page = 1;
+			if($("#"+id).val() == search_key && search_key != ""){
+				var ajaxData = "switch=";
+				if(id == "name"){
+					ajaxData += "1";
+				}else if(id == "num"){
+					ajaxData += "2";
+				}else if(id == "dep"){
+					ajaxData += "3";
+				}
+				var name = $("#name").val();
+				var num = $("#num").val();
+				var dep = $("#dep").val();
+				if(name != ''){
+					ajaxData += "&name="+name;
+				}
+				if(num != ''){
+					ajaxData += "&num="+num;
+				}
+				if(dep != ''){
+					ajaxData += "&dep="+dep;
+				}
+				$.ajax({
+					type:"post",
+					url:"http://deviceman.caeri.com.cn:6037/Index/device_list.html",
+					data:ajaxData,
+					dataType:"json",
+					success:function(data){
+						console.log(id);
+						console.log(data);
+						if(data){
+							var str = '';
+							for(var i=0;i<data.length;i++){
+								str += "<div class='data-item' onclick='chooseDataFun(this)' data-type='"+id+"'>"+data[i][0]+"</div>";
+							}
+							$(_this).parent(".input").siblings(".head-data-list").html(str);
+							$(_this).parent(".input").siblings(".head-data-list").show();
+						} else {
+							$(_this).parent(".input").siblings(".head-data-list").html("");
+							$(_this).parent(".input").siblings(".head-data-list").hide();
+						}
+					}
+				});
+			}
+		},500)
+	})
+	$(".head-data-list").scroll(function(e){
+		var type = $(this).attr("data-type");
+		var scrollTop = $(this).scrollTop();
+		var clientHeight = $(".head-data-list").height();
+		var offsetHeight = $(this).find(".data-item").length * ($(this).find(".data-item").height() - 1);
+		console.log(scrollTop,clientHeight,scrollTop + clientHeight,offsetHeight);
+		if(scrollTop + clientHeight > offsetHeight){
+			console.log("end");
+			getNextPageFun(type);
+		}
+	})
+})
+function clearSearchFun(){
+	$("#name").val("");
+	$("#num").val("");
+	$("#dep").val("");
+	window.sessionStorage.removeItem('DEVICEINFO');
+}
+function getNextPageFun(type){
+	if(is_loading){
+		return;
+	}
+	is_loading = true;
+	var ajaxData = "switch=";
+	var page = 0;
+	if(type == "name"){
+		page = name_page + 1;
+		ajaxData += "1&page="+page;
+	}else if(type == "num"){
+		page = num_page + 1;
+		ajaxData += "2&page="+page;
+	}else if(type == "dep"){
+		page = dep_page + 1;
+		ajaxData += "3&page="+page;
+	}
+	var name = $("#name").val();
+	var num = $("#num").val();
+	var dep = $("#dep").val();
+	if(name != ''){
+		ajaxData += "&name="+name;
+	}
+	if(num != ''){
+		ajaxData += "&num="+num;
+	}
+	if(dep != ''){
+		ajaxData += "&dep="+dep;
+	}
+	$.ajax({
+		type:"post",
+		url:"http://deviceman.caeri.com.cn:6037/Index/device_list.html",
+		data:ajaxData,
+		dataType:"json",
+		success:function(data){
+			if(data){
+				var str = '';
+				for(var i=0;i<data.length;i++){
+					str += "<div class='data-item' onclick='chooseDataFun(this)' data-type='"+type+"'>"+data[i][0]+"</div>";
+				}
+				if(type == "name"){
+					$(".name_list").append(str);
+					name_page = page;
+				}else if(type == "num"){
+					$(".num_list").append(str);
+					num_page = page;
+				}else if(type == "dep"){
+					$(".dep_list").append(str);
+					dep_page = page;
+				}
+			}
+			is_loading = false;
+		}
+	});
+}
+function getSearchDataFun(_this){
+
+	var is_show = $(_this).attr("data-is_show");
+	$(".head-data-list").hide();
+	name_page = 1;
+	num_page = 1;
+	dep_page = 1;
+	$(".search-column .input-item .input .btn").attr("data-is_show","false");
+	if(is_show == "false"){
+		$(_this).attr("data-is_show","true");
+    	var id = $(_this).attr("data-type");
+		var ajaxData = "switch=";
+		if(id == "name"){
+			ajaxData += "1";
+		}else if(id == "num"){
+			ajaxData += "2";
+		}else if(id == "dep"){
+			ajaxData += "3";
+		}
+		var name = $("#name").val();
+		var num = $("#num").val();
+		var dep = $("#dep").val();
+		if(name != ''){
+			ajaxData += "&name="+name;
+		}
+		if(num != '' && action_name != "log_list"){
+			ajaxData += "&num="+num;
+		}
+		if(dep != ''){
+			ajaxData += "&dep="+dep;
+		}
+		$.ajax({
+			type:"post",
+			url:"http://deviceman.caeri.com.cn:6037/Index/device_list.html",
+			data:ajaxData,
+			dataType:"json",
+			success:function(data){
+				console.log(id);
+				console.log(data);
+				if(data){
+					var str = '';
+					for(var i=0;i<data.length;i++){
+						str += "<div class='data-item' onclick='chooseDataFun(this)' data-type='"+id+"'>"+data[i][0]+"</div>";
+					}
+					$(_this).parent(".input").siblings(".head-data-list").html(str);
+					$(_this).parent(".input").siblings(".head-data-list").show();
+				} else {
+					$(_this).parent(".input").siblings(".head-data-list").html("");
+					$(_this).parent(".input").siblings(".head-data-list").hide();
+				}
+			}
+		});
+	}
+}
+/**
+ * 选择设备后执行的方法
+ */
+function chooseDataFun(_this){
+	var data = $(_this).html();
+	var id = $(_this).attr("data-type");
+	$("#"+id).val(data);
+	$(".head-data-list").hide();
+	$(".search-column .input-item .input .btn").attr("data-is_show","false");
+	$(".head-data-list").html("");
+	name_page = 1;
+	num_page = 1;
+	dep_page = 1;
+	var name = $("#name").val();
+	var num = $("#num").val();
+	var dep = $("#dep").val();
+	if(id = 'num'){
+		publicGetDataCallbackFun();
+	}else if(name && num && dep){
+		publicGetDataCallbackFun();
+	}
+}
+
+/**
+ * 格式化时间戳
+ */
+function formatDateTimeFun(data, type){
+	var newDate = new Date(data);
+	if(data.length == 10){
+		newDate = new Date(data*1000);
+	}
+	var y = newDate.getFullYear();
+	var m = newDate.getMonth() + 1;
+	var d = newDate.getDate();
+	var h = newDate.getHours();
+	var i = newDate.getMinutes();
+	var s = newDate.getSeconds();
+	if(m < 10){
+		m = "0"+m;
+	}
+	if(d < 10){
+		d = "0"+d;
+	}
+	if(h < 10){
+		h = "0"+h;
+	}
+	if(i < 10){
+		i = "0"+i;
+	}
+	if(s < 10){
+		s = "0"+s;
+	}
+	if(type){
+		return y + "-" + m + "-" + d + " "+ h/*  + ":" + i */;
+	}else{
+		return y + "-" + m + "-" + d;
+	}
+
+}
+</script>
+	<div class='nav-column'>
+		<div class='nav-item '><a href="http://deviceman.caeri.com.cn:6037/Index/device_list.html">
+			<div class='name'>设备信息</div>
+		</a></div>
+		<div class='nav-item active'>
+			<div class='name'>设备日志</div>
+		</div>
+		<div class='nav-item'><a href="http://deviceman.caeri.com.cn:6037/Index/fault_list.html">
+			<div class='name'>故障日志</div>
+		</a></div>
+	</div>
+<div class="detail-container">
+
+ 		<div class="set-month-item">
+			<div class='input-item'>
+    			<div class='title' style="text-align: right">时间</div>
+    			<div class='input'>
+    				<input type="text" id='choose_log_month' readonly="readonly" />
+    			</div>
+    		</div>
+    		<div class="pickdate-container" id="monthContainer">
+    			<div class="pickdate-week-item">
+					<ul class="date-bar">
+						<li class="dates-item">一</li>
+						<li class="dates-item">二</li>
+						<li class="dates-item">三</li>
+						<li class="dates-item">四</li>
+						<li class="dates-item">五</li>
+						<li class="dates-item">六</li>
+						<li class="dates-item">日</li>
+					</ul>
+				</div>
+				<div class="pickdate-month" id="pickdate_month">
+					<!-- <p class="pickdate-week">
+						<span class="pickdate-day"></span>
+						<span class="pickdate-day disable-day">1</span>
+						<span class="pickdate-day disable-day">2</span>
+						<span class="pickdate-day trust-day select-single-day">3</span>
+						<span class="pickdate-day trust-day">4</span>
+						<span class="pickdate-day trust-day">5</span>
+						<span class="pickdate-day trust-day">6</span>
+					</p> -->
+				</div>
+    		</div>
+		</div>
+
+		<script type="text/javascript">
+    		layui.use('laydate', function(){
+    			var laydate = layui.laydate;
+
+    		      //执行一个laydate实例
+		        laydate.render({
+		        	elem: '#choose_log_month' //指定元素
+		        	,type: 'month'
+		        	,format: 'yyyy-MM'
+    		        ,max: '2020-03-31'
+			        ,value: '2020-03'
+			        ,done: function(val, date, endDate){
+				        setMonthDataFun(val);
+			        }
+		        });
+    	    });
+    	    $(function(){
+        		setMonthDataFun('2020-03');
+    		})
+    		function setMonthDataFun(val){
+        		var num = $("#num").val();
+        		if (!num){
+            		return;
+        		}
+        		var max_yy = 2020;
+        		var max_mm = 03;
+        		var max_dd = 03;
+        		var dateArr = val.split("-");
+        		var yy = ~~dateArr[0];
+        		var mm = ~~dateArr[1];
+        		var dd = 1;
+        		var day_len = 31;
+        		if(mm == 4 || mm == 6 || mm == 9 || mm == 11){
+        			day_len = 30;
+        		}else if(mm == 2){
+            		if(yy % 4 != 0){
+            			day_len = 29;
+            		}else{
+                		day_len = 28;
+            		}
+            	}
+            	var ajaxData = "num="+num+"&y1="+yy+"&m1="+mm;
+            	$.ajax({
+            		type:"post",
+            		url:"http://deviceman.caeri.com.cn:6037/Index/group_log.html",
+            		data:ajaxData,
+            		dataType:"json",
+            		success:function(data){
+						var str = "";
+						if(!data || data == "null"){
+							data = [];
+						}
+						var start_week = (new Date(yy+"/"+mm+"/1")).getDay();
+						if(start_week == 0){
+							start_week = 7;
+						}
+						day_len += start_week;
+// 						var max_day_len = (Math.floor(day_len/7) + 1) * 7;
+						var max_day_len = 42;
+						for (var i = 2; i < max_day_len + 2; i++) {
+							var dd = i - start_week;
+							if(i % 7 == 2){
+								str +=
+									'<p class="pickdate-week">';
+							}
+							if(dd < 1){
+								str +=
+										'<span class="pickdate-day"></span>';
+							}else if(i > day_len){
+								str +=
+										'<span class="pickdate-day"></span>';
+							}else {
+								if(yy == max_yy && mm == max_mm && dd > max_mm){
+									str += '<span class="pickdate-day disable-day">' + dd + '</span>';
+								}else {
+									str += '<span class="pickdate-day trust-day '
+									for(var j = 0; j < data.length; j++){
+										var pd = data[j];
+										if(parseInt(pd.day) == dd){
+											if(parseFloat(pd.all_time) < 8){
+												str += 'short';
+											}else if (parseFloat(pd.all_time) >=24){
+												str += 'long';
+											}else {
+												str += 'medium';
+											}
+										}
+									}
+									str += '" data-date="' + yy + '/' + mm + '/' + dd + '">' + dd + '</span>';
+								}
+							}
+							if(i % 7 == 1){
+								str +=
+									'</p>';
+							}
+						}
+						$("#pickdate_month").html(str);
+						$("#pickdate_month").find(".trust-day").bind("click", function(){
+							var _this = this;
+							$("#time-limit .time-item .choose-time.active").removeClass("active");
+							$("#chooseTimeRange").val("");
+							$("#pickdate_month .trust-day.select-single-day").removeClass("select-single-day");
+							$(_this).addClass("select-single-day");
+							var start_time = $(_this).attr("data-date");
+					    	$("#start_time").val(start_time);
+					    	$("#end_time").val(start_time);
+					    	log_page = 0;
+							$("#log_list").html("");
+					    	getDataCallbackFun();
+						})
+            		}
+            	})
+    		}
+		</script>
+  <div class='time-limit-column' id='time-limit'>
+	<input type="hidden" id="start_time" />
+	<input type="hidden" id="end_time" />
+    <div class='time-item'>
+      <button class='choose-time' onclick='chooseTimeFun(this)' data-month='1'>最近1个月</button>
+      <button class='choose-time active' onclick='chooseTimeFun(this)' data-month='3'>最近3个月</button>
+      <button class='choose-time' onclick='chooseTimeFun(this)' data-month='6'>最近6个月</button>
+      <button class='choose-time' onclick='chooseTimeFun(this)' data-month='12'>最近1年</button>
+      <input class='choose-time long' id='chooseTimeRange' onclick='chooseTimeFun(this)' data-month='-1' placeholder='自定义范围' readonly />
+     <!-- <button class='choose-time long' id='chooseTimeRange' onclick='chooseTimeFun(this)' data-month='-1'><span>自定义范围</span><img src='/statics/images/device/more01.png' /></button>
+-->      <button class='add-log' onclick='isShowAddLogFun()'><img src='/statics/images/device/add.png' /></button>
+    </div>
+</div>
+<script type="text/javascript">
+var is_show_add_log = false;
+var init_long_choose_time = "<span>自定义范围</span><img src='/statics/images/device/more01.png' />";
+$(function(){
+	var month = 3;
+	var date = new Date();
+	var y = date.getFullYear();
+	var m = date.getMonth() + 1;
+	var d = date.getDate();
+	var y1 = y;
+	var m1 = m;
+	var d1 = d;
+	if(m1 <= month){
+		y1 -= 1;
+		m1 = m + 12 - month;
+	} else {
+		m1 = m - month;
+	}
+	var start_time = y1 + '-' + m1 + '-' + d1;
+	var end_time = y + '-' + m + '-' + d;
+	$("#start_time").val(start_time);
+	$("#end_time").val(end_time);
+
+	layui.use('laydate', function(){
+		var laydate = layui.laydate;
+
+	      //执行一个laydate实例
+		laydate.render({
+        	elem: '#chooseTimeRange'
+        	,range: true //或 range: '~' 来自定义分割字符
+        	,showBottom: false
+        	,ready: function(date){
+//         		$(".choose-time.long").html(init_long_choose_time);
+			}
+        	,change: function(value, date, endDate){
+        		$(".choose-time").removeClass("active");
+        		$("#chooseTimeRange").addClass("active");
+        		$("#pickdate_month .trust-day.select-single-day").removeClass("select-single-day");
+        		$("#chooseTimeRange").val(value);
+	        	var start_time = date.year + "-" + date.month + "-" +date.date;
+	    		var end_time = endDate.year + "-" + endDate.month + "-" +endDate.date;
+            	$("#start_time").val(start_time);
+	    		$("#end_time").val(end_time);
+	    	   	log_page = 0;
+				$("#log_list").html("");
+	    	   	getDataCallbackFun();
+	        }
+		});
+    });
+
+})
+function chooseTimeFun(_this){
+	var month = $(_this).attr('data-month');
+	if(month == -1){
+
+	} else {
+		$("#chooseTimeRange").val("");
+		$(".choose-time").removeClass("active");
+		$(_this).addClass("active");
+		$("#pickdate_month .trust-day.select-single-day").removeClass("select-single-day");
+    	var date = new Date();
+    	var y = date.getFullYear();
+    	var m = date.getMonth() + 1;
+    	var d = date.getDate();
+    	var y1 = y;
+    	var m1 = m;
+    	var d1 = d;
+    	if(m1 <= month){
+    		y1 -= 1;
+    		m1 = m + 12 - month;
+    	} else {
+    		m1 = m - month;
+    	}
+    	var start_time = y1 + '-' + m1 + '-' + d1;
+    	var end_time = y + '-' + m + '-' + d;
+    	$("#start_time").val(start_time);
+    	$("#end_time").val(end_time);
+    	log_page = 0;
+		$("#log_list").html("");
+    	getDataCallbackFun();
+	}
+}
+function isShowAddLogFun(){
+	if(is_show_add_log){
+		$(".add-log-column").hide();
+		is_show_add_log = false;
+		initAddLogInputDataFun();
+	} else {
+		$(".add-log-column").show();
+		is_show_add_log = true;
+	}
+}
+</script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  <div class='add-log-column search-column box-shadow' style="height: auto;overflow:hidden;">
+		<input type="hidden" id='log_id' />
+		<div class='input-item'>
+			<div class='title'>使用日期</div>
+			<div class='input'>
+				<input type="text" id='log_start_time' readonly="readonly" />
+			</div>
+		</div>
+		<div class='input-item'>
+			<div class='title'>使用时长(小时)</div>
+			<div class='input'>
+				<input type="text" id='log_end_time'  />
+			</div>
+		</div>
+		<div class='input-item'>
+			<div class='title'>任务名称</div>
+			<div class='input'>
+				<input class='addLogInput' id='task_name' placeholder='请输入任务名称'
+					onclick="event.stopPropagation();" /> <img class='btn'
+					id='choose_task_name'
+					src='/statics/images/device/btn01.png'
+					data-is_show='false'
+					onclick="getTaskListFun(this);event.stopPropagation();" />
+			</div>
+			<div class='data-list content-data-list task_name_list' data-type='task_name'>
+				<!--         <div class='data-item' data-type=''>任务1</div> -->
+			</div>
+		</div>
+		<div class='input-item'>
+			<div class='title'>项目名称</div>
+			<div class='input'>
+				<input class='addLogInput' id='obj_name' placeholder='请输入项目名称'
+					onclick="event.stopPropagation();" /> <img class='btn'
+					id='choose_obj_name'
+					src='/statics/images/device/btn01.png'
+					data-is_show='false'
+					onclick="getObjListFun(this);event.stopPropagation();" />
+			</div>
+			<div class='data-list content-data-list obj_name_list' data-type='obj_name'>
+				<!--         <div class='data-item' data-type=''>项目1</div> -->
+			</div>
+		</div>
+		<div class='input-item' style='height: auto;'>
+			<div class='title'>使用人</div>
+			<div class='input' style='height: auto;'>
+				<div class='people_box' onclick="event.stopPropagation();"><span onclick='deletePeopleFun(this)'>蒋鑫</span></div>
+				<img class='btn' id='choose_people'
+					src='/statics/images/device/btn01.png'
+					data-is_show='false'
+					onclick="getPeopleListFun(this);event.stopPropagation();" />
+			</div>
+			<input id='people_input' class='people_input' onclick="event.stopPropagation();" placeholder='搜索使用人' />
+			<div class='data-list content-data-list people_list' data-type='people'>
+				<!--         <div class='data-item' data-type=''>使用人1</div> -->
+			</div>
+		</div>
+		<div class='input-item use_area'>
+			<div class='title'>使用地点</div>
+			<div class='input'>
+				<input id='address' placeholder='请输入使用地点'
+					style='border-right: none; width: 100%;' />
+			</div>
+		</div>
+ 		<div class='input-item' style="width: 1050px;">
+			<div class='title'>备注</div>
+			<div class='input'>
+				<input id='remark' placeholder='请输入备注'
+					style='border-right: none; width: 100%;' maxlength="50" />
+			</div>
+		</div>
+		<div class='save-btn' style="margin-left: 20px;">
+			<button onclick='sureFun()'>保存</button>
+		</div>
+	</div>
+	<br />
+	<div style="width: 100%;height: 1px;overflow:hidden;"></div>
+	<div class='excel-btn'>
+		<button onclick='outFun()'>导出数据</button>
+			</div>
+  <table class="layui-table log-list">
+  	<thead>
+  		<tr>
+  			<th>使用日期</th>
+  			<th>使用时长(小时)</th>
+  			<th>任务及编号</th>
+  			<th>使用项目</th>
+  			<th>使用人</th>
+  			<th>使用地点</th>
+  			<th>备注</th>
+  			<th>操作</th>
+  		</tr>
+  	</thead>
+  	<tbody id='log_list'>
+
+  	</tbody>
+  </table>
+	<div id='page-box'></div>
+ </div>
+</div>
+<script type="text/javascript">
+var task_id = '';
+var log_page = 0;
+var task_list_page = 0;
+var obj_list_page = 0;
+var people_list_page = 0;
+var is_loading_data = false;
+var deviceinfo = {};
+var addLogTimeObj = "";
+$(function(){
+	getDataCallbackFun();
+	$(".content-data-list").scroll(function(e){
+		var type = $(this).attr("data-type");
+		var scrollTop = $(this).scrollTop();
+		var clientHeight = $(".content-data-list").height();
+		var offsetHeight = $(this).find(".data-item").length * ($(this).find(".data-item").height()-1);
+		if(scrollTop + clientHeight > offsetHeight){
+			getNextPageDataFun(type);
+		}
+	})
+
+	/**
+	 * 页面触底
+	 */
+// 	 $(document).scroll(function(e){
+// 		var scrollTop = $(this).scrollTop();
+// 		var clientHeight = $(window).height();
+// 		var offsetHeight = $(document).height()-10;
+// 		if(scrollTop + clientHeight > offsetHeight){
+// 			getDataCallbackFun();
+// 		}
+// 	 })
+	layui.use('laydate', function(){
+		var laydate = layui.laydate;
+
+	      //执行一个laydate实例
+	        laydate.render({
+	        	elem: '#log_start_time' //指定元素
+	        	,type: 'datetime'
+	        	,format: 'yyyy-MM-dd HH'
+		        ,value: '2020-03-03 08'
+	        });
+    });
+    $('.addLogInput').bind('input propertychange', function(e) {
+		var _this = this;
+		if(addLogTimeObj){
+			clearTimeout(addLogTimeObj);
+		}
+		var id = e.currentTarget.id;
+		search_key = e.currentTarget.value;
+		addLogTimeObj = setTimeout(function(){
+			$(_this).siblings("img").attr("data-is_show","true");
+			if(id == 'task_name'){
+				task_list_page = 0;
+				task_id = '';
+				getTaskListFun(false);
+			} else if(id == 'obj_name'){
+				obj_list_page = 0;
+				getObjListFun(false);
+			}
+		},300)
+	})
+	$("#people_input").bind('input propertychange', function(e) {
+		var _this = this;
+		if(addLogTimeObj){
+			clearTimeout(addLogTimeObj);
+		}
+		var id = e.currentTarget.id;
+		search_key = e.currentTarget.value;
+		addLogTimeObj = setTimeout(function(){
+			people_list_page = 0;
+			getPeopleListFun(false);
+		},300)
+	})
+})
+function publicGetDataCallbackFun(){
+	var name = $("#name").val();
+	var num = $("#num").val();
+	var dep = $("#dep").val();
+	var ajaxData = 'num='+num;
+// 	var ajaxData = 'name='+name+'&num='+num+'&dep='+dep;
+	$.ajax({
+		type:"post",
+		url:"http://deviceman.caeri.com.cn:6037/Index/get_device.html",
+		data:ajaxData,
+		dataType:"json",
+		success:function(data){
+			if(data && data.length == 1){
+				var deviceinfo = data[0];
+				var deviceName = deviceinfo.DeviceName;
+				var deviceNO = deviceinfo.DeviceNO;
+				var useDepartment = deviceinfo.UseDepartment;
+				if(!deviceName){
+					deviceName = "";
+				}
+				if(!deviceNO){
+					deviceNO = "";
+				}
+				if(!useDepartment){
+					useDepartment = "";
+				}
+				$("#device_name").text(deviceName);
+				$("#device_num").text(deviceNO);
+				$("#device_dep").text(useDepartment);
+				$("#name").val(deviceName);
+				$("#num").val(deviceNO);
+				$("#dep").val(useDepartment);
+				deviceinfo = JSON.stringify(deviceinfo);
+				window.sessionStorage.setItem('DEVICEINFO',deviceinfo);
+				log_page = 0;
+				$("#log_list").html("");
+				getDataCallbackFun();
+				setMonthDataFun('2020-03');
+			} else{
+				$("#device_name").text("");
+				$("#device_num").text("");
+				$("#device_dep").text("");
+				window.sessionStorage.removeItem('DEVICEINFO',deviceinfo);
+			}
+		}
+	});
+}
+
+function sureFun(){
+	var is_mobile = deviceinfo.IsMobile;
+	var name = $("#name").val();
+	var num = $("#num").val();
+	var dep = $("#dep").val();
+	var start_time = $("#log_start_time").val();
+	var end_time = $("#log_end_time").val();
+	var task_name = $("#task_name").val();
+	var obj_name = $("#obj_name").val();
+	var id = $("#log_id").val();
+	var people = '';
+	$(".people_box span").each(function(){
+		if(people == ''){
+			people += $(this).html();
+		}else {
+			people += "," + $(this).html();
+		}
+	})
+	var address = $("#address").val();
+	var remark = $("#remark").val();
+	var phone = "13368385052";
+	var real_name = "蒋鑫";
+	if(!name || !num || !dep){
+		layer.msg('请选择设备');
+		return;
+	}
+	if(!start_time){
+		layer.msg('请选择使用日期');
+		return;
+	}
+	if(!end_time){
+		layer.msg('请输入使用时长');
+		return;
+	}
+	if(end_time > 24){
+		layer.msg('使用时长不能大于24小时');
+		return;
+	}
+	if(!task_name){
+		layer.msg('请输入任务名称');
+		return;
+	}
+	if(!obj_name){
+		layer.msg('请输入项目名称');
+		return;
+	}
+	if(!people){
+		layer.msg('请选择使用人');
+		return;
+	}
+	if(is_mobile != '否' && !address){
+		layer.msg('请输入使用地点');
+		return;
+	}
+	var ajaxData = "data[name]="+name+"&data[num]="+num+"&data[dep]="+dep+"&data[start_time]="+start_time+"&data[end_time]="+end_time+"&data[task_name]="+task_name+"&data[people]="+people+"&data[address]="+address+"&data[phone]="+phone+"&data[real_name]="+real_name+"&data[obj_name]="+obj_name+"&data[remark]="+remark;
+	if(id){
+		ajaxData += "&data[id]="+id;
+	}
+	$.ajax({
+		type:"post",
+		url:"http://deviceman.caeri.com.cn:6037/Index/add_log.html",
+		data:ajaxData,
+		dataType:"json",
+		success:function(data){
+			if(data.error == 0){
+				layer.msg('保存成功',function(){
+					window.location.href = '';
+				});
+			}
+		}
+	});
+}
+function getNextPageDataFun(type){
+	if(is_loading_data){
+		return;
+	}
+	is_loading_data = true;
+	if(type == 'task_name'){
+		getTaskListFun(false);
+	} else if(type == 'obj_name'){
+		getObjListFun(false);
+	} else if(type == 'people'){
+		getPeopleListFun(false);
+	}
+}
+function getTaskListFun(_this){
+	if(_this){
+    	var is_show = $(_this).attr("data-is_show");
+		if(is_show == 'true'){
+			initDataListFun();
+			return;
+		}else {
+			$(_this).attr("data-is_show","true");
+		}
+	}
+	var page = task_list_page + 1;
+	var ajaxData = "switch=1&page_count=20&page="+page;
+	var task_name = $("#task_name").val();
+	if(task_name){
+		ajaxData += '&name='+task_name;
+	}
+	$.ajax({
+		type:"post",
+		url:"http://deviceman.caeri.com.cn:6037/Index/task_list.html",
+		data:ajaxData,
+		dataType:"json",
+		success:function(data){
+			if(!data){
+				data = [];
+			}
+			var str = '';
+			for(var i=0;i<data.length;i++){
+				var nameOf = data[i].NameOfEntrustOrg;
+				if(!nameOf || nameOf == 'null'){
+					nameOf = data[i].NameOfOrgBeTested;
+				}
+				if(!nameOf || nameOf == 'null'){
+					nameOf = "";
+				}
+				if(!data[i].ProjectName){
+					data[i].ProjectName = "";
+				}
+				str += "<div class='data-item' onclick='chooseFun(this)' data-id='"+data[i].ID+"' data-type='task_name'>" + data[i].RegFormNO + " - " + data[i].ProjectName + " - " + nameOf +"</div>";
+			}
+			if(page == 1){
+				console.log(0);
+				$(".task_name_list").html(str);
+				$(".task_name_list").show();
+			} else {
+				$(".task_name_list").append(str);
+			}
+			task_list_page = page;
+			is_loading_data = false;
+		}
+	});
+}
+function getObjListFun(_this){
+	if(_this){
+    	var is_show = $(_this).attr("data-is_show");
+		if(is_show == 'true'){
+			initDataListFun();
+			return;
+		}else {
+			$(_this).attr("data-is_show","true");
+		}
+	}
+	var page = obj_list_page + 1;
+	var ajaxData = "switch=1&page_count=20&page="+page;
+	var obj_name = $("#obj_name").val();
+	if(obj_name){
+		ajaxData += '&name='+obj_name;
+	}
+	if(task_id){
+		ajaxData += '&id='+task_id;
+	}
+	$.ajax({
+		type:"post",
+		url:"http://deviceman.caeri.com.cn:6037/Index/obj_list.html",
+		data:ajaxData,
+		dataType:"json",
+		success:function(data){
+			if(!data){
+				data = [];
+			}
+			var str = '';
+			for(var i=0;i<data.length;i++){
+				str += "<div class='data-item' onclick='chooseFun(this)' data-type='obj_name'>" + data[i].FullName +"</div>";
+			}
+			if(page == 1){
+				console.log(0);
+				$(".obj_name_list").html(str);
+				$(".obj_name_list").show();
+			} else {
+				$(".obj_name_list").append(str);
+			}
+			obj_list_page = page;
+			is_loading_data = false;
+		}
+	});
+}
+function getPeopleListFun(_this){
+	is_loading_data = true;
+	if(_this){
+    	var is_show = $(_this).attr("data-is_show");
+		if(is_show == 'true'){
+			initDataListFun();
+			$("#people_input").hide();
+			$("#people_input").val("");
+			return;
+		}else {
+			$("#people_input").show();
+			$(_this).attr("data-is_show","true");
+		}
+	}
+	var people_name = $("#people_input").val();
+	var page = people_list_page + 1;
+	var ajaxData = "switch=1&page_count=20&page="+page;
+	if(people_name){
+		ajaxData += '&name='+people_name;
+	}
+	$.ajax({
+		type:"post",
+		url:"http://deviceman.caeri.com.cn:6037/Index/people_list.html",
+		data:ajaxData,
+		dataType:"json",
+		success:function(data){
+			if(data){
+				var str = '';
+				for(var i=0;i<data.length;i++){
+					str += "<div class='data-item' onclick='choosePeopleFun(this)' data-type='obj_name'>" + data[i].Name +"</div>";
+				}
+				if(page == 1){
+    				$(".people_list").html(str);
+    				$(".people_list").show();
+				} else {
+					$(".people_list").append(str);
+				}
+				people_list_page = page;
+			}else if(page == 1){
+				$(".people_list").html("");
+			}
+			is_loading_data = false;
+		}
+	});
+}
+function initDataListFun(){
+	task_list_page = 0;
+	obj_list_page = 0;
+	people_list_page = 0;
+	$("#people_input").val("");
+	$("#people_input").hide();
+	$(".content-data-list").hide();
+	$(".content-data-list").html("");
+	$(".search-column .input-item .input .btn").attr("data-is_show","false");
+}
+function chooseFun(_this){
+	var data = $(_this).html();
+	var id = $(_this).attr("data-type");
+	if(id == 'task_name'){
+		task_id = $(_this).attr("data-id");
+	}
+	$("#"+id).val(data);
+	$(".content-data-list").hide();
+	$(".content-data-list").html("");
+	task_list_page = 0;
+	obj_list_page = 0;
+}
+function choosePeopleFun(_this){
+	var data = $(_this).html();
+	var str = "<span onclick='deletePeopleFun(this)'>" + data + "</span>";
+	$(".people_box").append(str);
+	$(".content-data-list").hide();
+	$(".content-data-list").html("");
+	$("#people_input").hide();
+	$("#people_input").val("");
+	people_list_page = 0;
+}
+function deletePeopleFun(_this){
+	$(_this).remove();
+}
+function publicPageInitFun(DEVICEINFO){
+	deviceinfo = DEVICEINFO;
+	$("#name").val(DEVICEINFO.DeviceName);
+	$("#num").val(DEVICEINFO.DeviceNO);
+	$("#dep").val(DEVICEINFO.UseDepartment);
+	if(deviceinfo.IsMobile == '否'){
+// 		$(".use_area").hide();
+// 		$(".log-list thead tr th").eq(5).remove();
+	}
+	initLogStartTime();
+}
+function getDataCallbackFun(){
+	if(is_loading_data){
+		return;
+	}
+	is_loading_data = true;
+	var name = $("#name").val();
+	var num = $("#num").val();
+	var dep = $("#dep").val();
+	var start_time = $("#start_time").val();
+	var end_time = $("#end_time").val();
+	var page = log_page + 1;
+	if(name && num && dep){
+		var ajaxData = 'switch=1&page_count=10&name=' + name + '&num=' + num + '&dep=' + dep + '&start_time=' + start_time + '&end_time=' + end_time + '&page=' + page
+		$.ajax({
+			type:"post",
+			url:"http://deviceman.caeri.com.cn:6037/Index/log_list.html",
+			data:ajaxData,
+			dataType:"json",
+			success:function(res){
+				if(page == 1){
+					layui.use('laypage', function(){
+						var laypage = layui.laypage;
+    					laypage.render({
+    					  elem: 'page-box'
+    					  ,count: res.count //数据总数，从服务端得到
+    					  ,limit: 10
+    					  ,jump: function(obj, first){
+    					      log_page = obj.curr - 1;
+    					      getDataCallbackFun();
+    					  }
+    					});
+					})
+				}
+				if(res.data){
+					var data = res.data;
+					var str = '';
+					for(var i=0;i<data.length;i++){
+						var pd = data[i];
+						var btn = "";
+						if(pd.real_name == "蒋鑫" && pd.phone == "13368385052"){
+							btn = "<a class='btn edit' onclick='editFun(this,"+pd.id+")'>编辑</a> <a class='btn delete' onclick='deleteFun(this,"+pd.id+")'>删除</a>";
+						}
+						str += "<tr><td>"+formatDateTimeFun(pd.start_time,1)+"</td>"
+							+ "<td>"+pd.end_time+"</td>"
+							+ "<td>"+pd.task_name+"</td>"
+							+ "<td>"+pd.obj_name+"</td>"
+							+ "<td>"+pd.people+"</td>";
+// 						if(deviceinfo.IsMobile != '否'){
+							str += "<td>"+pd.address+"</td>";
+// 						}
+						str += "<td>"+pd.remark+"</td>"
+							+ "<td>"+btn+"</td>"
+							+ "</tr>";
+					}
+					$("#log_list").html(str);
+					log_page = page;
+				}
+				is_loading_data = false;
+			}
+		});
+	}else {
+		is_loading_data = false;
+	}
+}
+function outFun(){
+	var name = $("#name").val();
+	var num = $("#num").val();
+	var dep = $("#dep").val();
+	if(!name || !num || !dep){
+		layer.msg("请先选择设备!");
+		return;
+	}
+	var start_time = $("#start_time").val();
+	var end_time = $("#end_time").val();
+	var ajaxData = 'name=' + name + '&num=' + num + '&dep=' + dep + '&start_time=' + start_time + '&end_time=' + end_time;
+	window.open("http://deviceman.caeri.com.cn:6037/Index/out_log_list.html?"+ajaxData, "_blank");
+}
+// 导入
+layui.use('upload', function(){
+    var upload = layui.upload;
+	//执行实例
+    var uploadInst = upload.render({
+        elem: "#importBtn" //绑定元素
+        ,url: "http://deviceman.caeri.com.cn:6037/Index/in_log.html" //上传接口
+        ,field: "excel"
+        ,exts: "xlsx|xls"
+        ,size: 10485760
+        ,done: function(res){
+        //上传完毕回调
+            console.log(res);
+            if(res.error == 0){
+            	layer.confirm(res.info, {
+					btn: ['确定']
+            	},function(index, layero){
+            		layer.close(index);
+          		});
+            }else{
+                layer.msg("操作失败,请稍后再试");
+            }
+        }
+        ,error: function(){
+        //请求异常回调
+            console.log("error");
+        }
+    });
+});
+function deleteFun(_this,id){
+	layer.confirm('确定要删除吗？', {
+		btn: ['确定','取消'], //按钮
+		closeBtn: 0
+		}, function(){
+			layer.closeAll();
+			var ajaxData = "switch=1&data[id]="+id;
+			$.ajax({
+				type:"post",
+				url:"http://deviceman.caeri.com.cn:6037/Index/add_log.html",
+				data:ajaxData,
+				dataType:"json",
+				success:function(data){
+					if(data.error == 0){
+						layer.msg('删除成功');
+						$(_this).parents("tr").remove();
+					}else {
+						layer.msg('删除失败');
+					}
+				}
+			})
+		}, function(){
+			layer.closeAll();
+		});
+}
+function editFun(_this,id){
+	var dataArr = $(_this).parents("tr").find("td");
+	var start_time = $(dataArr[0]).html();
+	var end_time = $(dataArr[1]).html();
+	var task_name = $(dataArr[2]).html();
+	var obj_name = $(dataArr[3]).html();
+	var people = $(dataArr[4]).html();
+	var address = $(dataArr[5]).html();
+	var remark = $(dataArr[6]).html();
+	if(deviceinfo.IsMobile == '否'){
+// 		remark = $(dataArr[5]).html();
+	}
+	var str = '';
+	if(people){
+		people = people.split(',');
+    	for(var i=0;i<people.length;i++){
+    		str += "<span onclick='deletePeopleFun(this)'>" + people[i] + "</span>";
+    	}
+	}
+	$("#log_start_time").val(start_time);
+	$("#log_end_time").val(end_time);
+	$("#task_name").val(task_name);
+	$("#obj_name").val(obj_name);
+	$(".people_box").html(str);
+	$("#address").val(address);
+	$("#remark").val(remark);
+	$("#log_id").val(id);
+	$(".add-log-column").show();
+	is_show_add_log = true;
+
+}
+function initLogStartTime(){
+	var date = new Date();
+	var y = date.getFullYear();
+	var m = date.getMonth() + 1;
+	var d = date.getDate();
+	var log_start_time = y + '-' + m + '-' + d + ' 08';
+	$("#log_start_time").val(log_start_time);
+	$("#log_end_time").val("");
+}
+function initAddLogInputDataFun(){
+	initLogStartTime();
+	$("#task_name").val("");
+	$("#obj_name").val("");
+	$(".people_box").html("<span onclick='deletePeopleFun(this)'>蒋鑫</span>");
+	$("#address").val("");
+	$("#log_id").val("");
+}
+</script><div id="think_page_trace" style="position: fixed;bottom:0;right:0;font-size:14px;width:100%;z-index: 999999;color: #000;text-align:left;font-family:'微软雅黑';">
+    <div id="think_page_trace_tab" style="display: none;background:white;margin:0;height: 250px;">
+        <div id="think_page_trace_tab_tit" style="height:30px;padding: 6px 12px 0;border-bottom:1px solid #ececec;border-top:1px solid #ececec;font-size:16px">
+                            <span style="color:#000;padding-right:12px;height:30px;line-height: 30px;display:inline-block;margin-right:3px;cursor: pointer;font-weight:700">基本</span>
+                            <span style="color:#000;padding-right:12px;height:30px;line-height: 30px;display:inline-block;margin-right:3px;cursor: pointer;font-weight:700">文件</span>
+                            <span style="color:#000;padding-right:12px;height:30px;line-height: 30px;display:inline-block;margin-right:3px;cursor: pointer;font-weight:700">流程</span>
+                            <span style="color:#000;padding-right:12px;height:30px;line-height: 30px;display:inline-block;margin-right:3px;cursor: pointer;font-weight:700">错误</span>
+                            <span style="color:#000;padding-right:12px;height:30px;line-height: 30px;display:inline-block;margin-right:3px;cursor: pointer;font-weight:700">SQL</span>
+                            <span style="color:#000;padding-right:12px;height:30px;line-height: 30px;display:inline-block;margin-right:3px;cursor: pointer;font-weight:700">调试</span>
+                    </div>
+        <div id="think_page_trace_tab_cont" style="overflow:auto;height:212px;padding: 0; line-height: 24px">
+                            <div style="display:none;">
+                    <ol style="padding: 0; margin:0">
+                        <li style="border-bottom:1px solid #EEE;font-size:14px;padding:0 12px">请求信息 : 2020-03-03 16:15:17 HTTP/1.1 GET : /Index/log_list.html</li><li style="border-bottom:1px solid #EEE;font-size:14px;padding:0 12px">运行时间 : 0.0486s ( Load:0.0203s Init:0.0023s Exec:0.0033s Template:0.0226s )</li><li style="border-bottom:1px solid #EEE;font-size:14px;padding:0 12px">吞吐率 : 20.58req/s</li><li style="border-bottom:1px solid #EEE;font-size:14px;padding:0 12px">内存开销 : 2,176.52 kb</li><li style="border-bottom:1px solid #EEE;font-size:14px;padding:0 12px">查询信息 : 0 queries 0 writes </li><li style="border-bottom:1px solid #EEE;font-size:14px;padding:0 12px">文件加载 : 45</li><li style="border-bottom:1px solid #EEE;font-size:14px;padding:0 12px">缓存信息 : 35 gets 0 writes </li><li style="border-bottom:1px solid #EEE;font-size:14px;padding:0 12px">配置加载 : 153</li><li style="border-bottom:1px solid #EEE;font-size:14px;padding:0 12px">会话信息 : SESSION_ID=qorj7j8uhi82u19arka01ihmo6</li>                    </ol>
+                </div>
+                            <div style="display:none;">
+                    <ol style="padding: 0; margin:0">
+                        <li style="border-bottom:1px solid #EEE;font-size:14px;padding:0 12px">/www/wwwroot/DeviceMan.caeri.com.cn/index.php ( 1.22 KB )</li><li style="border-bottom:1px solid #EEE;font-size:14px;padding:0 12px">/www/wwwroot/DeviceMan.caeri.com.cn/shuipf/Core/ThinkPHP.php ( 4.61 KB )</li><li style="border-bottom:1px solid #EEE;font-size:14px;padding:0 12px">/www/wwwroot/DeviceMan.caeri.com.cn/shuipf/Core/Library/Think/Think.class.php ( 11.98 KB )</li><li style="border-bottom:1px solid #EEE;font-size:14px;padding:0 12px">/www/wwwroot/DeviceMan.caeri.com.cn/shuipf/Core/Library/Think/Storage.class.php ( 1.34 KB )</li><li style="border-bottom:1px solid #EEE;font-size:14px;padding:0 12px">/www/wwwroot/DeviceMan.caeri.com.cn/shuipf/Core/Library/Think/Storage/Driver/File.class.php ( 3.42 KB )</li><li style="border-bottom:1px solid #EEE;font-size:14px;padding:0 12px">/www/wwwroot/DeviceMan.caeri.com.cn/shuipf/Common/Conf/core.php ( 2.73 KB )</li><li style="border-bottom:1px solid #EEE;font-size:14px;padding:0 12px">/www/wwwroot/DeviceMan.caeri.com.cn/shuipf/Common/Common/corefun.php ( 53.86 KB )</li><li style="border-bottom:1px solid #EEE;font-size:14px;padding:0 12px">/www/wwwroot/DeviceMan.caeri.com.cn/shuipf/Common/Common/common.php ( 36.57 KB )</li><li style="border-bottom:1px solid #EEE;font-size:14px;padding:0 12px">/www/wwwroot/DeviceMan.caeri.com.cn/shuipf/Libs/System/Hook.class.php ( 6.31 KB )</li><li style="border-bottom:1px solid #EEE;font-size:14px;padding:0 12px">/www/wwwroot/DeviceMan.caeri.com.cn/shuipf/Core/Library/Think/App.class.php ( 13.26 KB )</li><li style="border-bottom:1px solid #EEE;font-size:14px;padding:0 12px">/www/wwwroot/DeviceMan.caeri.com.cn/shuipf/Core/Library/Think/Dispatcher.class.php ( 14.71 KB )</li><li style="border-bottom:1px solid #EEE;font-size:14px;padding:0 12px">/www/wwwroot/DeviceMan.caeri.com.cn/shuipf/Core/Library/Think/Log.class.php ( 3.78 KB )</li><li style="border-bottom:1px solid #EEE;font-size:14px;padding:0 12px">/www/wwwroot/DeviceMan.caeri.com.cn/shuipf/Core/Library/Think/Route.class.php ( 13.07 KB )</li><li style="border-bottom:1px solid #EEE;font-size:14px;padding:0 12px">/www/wwwroot/DeviceMan.caeri.com.cn/shuipf/Core/Library/Think/Controller.class.php ( 10.65 KB )</li><li style="border-bottom:1px solid #EEE;font-size:14px;padding:0 12px">/www/wwwroot/DeviceMan.caeri.com.cn/shuipf/Core/Library/Think/View.class.php ( 8.02 KB )</li><li style="border-bottom:1px solid #EEE;font-size:14px;padding:0 12px">/www/wwwroot/DeviceMan.caeri.com.cn/shuipf/Core/Library/Behavior/BuildLiteBehavior.class.php ( 3.61 KB )</li><li style="border-bottom:1px solid #EEE;font-size:14px;padding:0 12px">/www/wwwroot/DeviceMan.caeri.com.cn/shuipf/Core/Library/Behavior/ParseTemplateBehavior.class.php ( 3.80 KB )</li><li style="border-bottom:1px solid #EEE;font-size:14px;padding:0 12px">/www/wwwroot/DeviceMan.caeri.com.cn/shuipf/Core/Library/Behavior/ContentReplaceBehavior.class.php ( 1.87 KB )</li><li style="border-bottom:1px solid #EEE;font-size:14px;padding:0 12px">/www/wwwroot/DeviceMan.caeri.com.cn/shuipf/Core/Conf/convention.php ( 11.01 KB )</li><li style="border-bottom:1px solid #EEE;font-size:14px;padding:0 12px">/www/wwwroot/DeviceMan.caeri.com.cn/shuipf/Common/Conf/config.php ( 10.42 KB )</li><li style="border-bottom:1px solid #EEE;font-size:14px;padding:0 12px">/www/wwwroot/DeviceMan.caeri.com.cn/shuipf/Common/Conf/dataconfig.php ( 1.02 KB )</li><li style="border-bottom:1px solid #EEE;font-size:14px;padding:0 12px">/www/wwwroot/DeviceMan.caeri.com.cn/shuipf/Common/Conf/addition.php ( 1.11 KB )</li><li style="border-bottom:1px solid #EEE;font-size:14px;padding:0 12px">/www/wwwroot/DeviceMan.caeri.com.cn/shuipf/Common/Conf/version.php ( 0.61 KB )</li><li style="border-bottom:1px solid #EEE;font-size:14px;padding:0 12px">/www/wwwroot/DeviceMan.caeri.com.cn/shuipf/Common/Conf/alias.php ( 1.80 KB )</li><li style="border-bottom:1px solid #EEE;font-size:14px;padding:0 12px">/www/wwwroot/DeviceMan.caeri.com.cn/shuipf/Libs/System/Cache.class.php ( 2.34 KB )</li><li style="border-bottom:1px solid #EEE;font-size:14px;padding:0 12px">/www/wwwroot/DeviceMan.caeri.com.cn/shuipf/Core/Library/Think/Cache.class.php ( 3.72 KB )</li><li style="border-bottom:1px solid #EEE;font-size:14px;padding:0 12px">/www/wwwroot/DeviceMan.caeri.com.cn/shuipf/Core/Library/Think/Cache/Driver/File.class.php ( 5.73 KB )</li><li style="border-bottom:1px solid #EEE;font-size:14px;padding:0 12px">/www/wwwroot/DeviceMan.caeri.com.cn/shuipf/Core/Lang/zh-cn.php ( 2.52 KB )</li><li style="border-bottom:1px solid #EEE;font-size:14px;padding:0 12px">/www/wwwroot/DeviceMan.caeri.com.cn/shuipf/Core/Conf/debug.php ( 1.48 KB )</li><li style="border-bottom:1px solid #EEE;font-size:14px;padding:0 12px">/www/wwwroot/DeviceMan.caeri.com.cn/shuipf/Common/Conf/debug.php ( 1.13 KB )</li><li style="border-bottom:1px solid #EEE;font-size:14px;padding:0 12px">/www/wwwroot/DeviceMan.caeri.com.cn/shuipf/Common/Behavior/AppInitBehavior.class.php ( 2.49 KB )</li><li style="border-bottom:1px solid #EEE;font-size:14px;padding:0 12px">/www/wwwroot/DeviceMan.caeri.com.cn/shuipf/Core/Library/Behavior/ReadHtmlCacheBehavior.class.php ( 5.51 KB )</li><li style="border-bottom:1px solid #EEE;font-size:14px;padding:0 12px">/www/wwwroot/DeviceMan.caeri.com.cn/shuipf/Common/Behavior/AppBeginBehavior.class.php ( 4.23 KB )</li><li style="border-bottom:1px solid #EEE;font-size:14px;padding:0 12px">/www/wwwroot/DeviceMan.caeri.com.cn/shuipf/Application/Home/Controller/IndexController.class.php ( 28.15 KB )</li><li style="border-bottom:1px solid #EEE;font-size:14px;padding:0 12px">/www/wwwroot/DeviceMan.caeri.com.cn/shuipf/Common/Controller/Base.class.php ( 1.37 KB )</li><li style="border-bottom:1px solid #EEE;font-size:14px;padding:0 12px">/www/wwwroot/DeviceMan.caeri.com.cn/shuipf/Common/Controller/ShuipFCMS.class.php ( 10.76 KB )</li><li style="border-bottom:1px solid #EEE;font-size:14px;padding:0 12px">/www/wwwroot/DeviceMan.caeri.com.cn/shuipf/Application/Home/Service/RedisHelper.class.php ( 2.64 KB )</li><li style="border-bottom:1px solid #EEE;font-size:14px;padding:0 12px">/www/wwwroot/DeviceMan.caeri.com.cn/shuipf/Common/Behavior/ViewBeginBehavior.class.php ( 0.59 KB )</li><li style="border-bottom:1px solid #EEE;font-size:14px;padding:0 12px">/www/wwwroot/DeviceMan.caeri.com.cn/shuipf/Core/Library/Think/Template.class.php ( 27.70 KB )</li><li style="border-bottom:1px solid #EEE;font-size:14px;padding:0 12px">/www/wwwroot/DeviceMan.caeri.com.cn/shuipf/Core/Library/Think/Template/TagLib/Cx.class.php ( 22.02 KB )</li><li style="border-bottom:1px solid #EEE;font-size:14px;padding:0 12px">/www/wwwroot/DeviceMan.caeri.com.cn/shuipf/Core/Library/Think/Template/TagLib.class.php ( 8.95 KB )</li><li style="border-bottom:1px solid #EEE;font-size:14px;padding:0 12px">/www/wwwroot/DeviceMan.caeri.com.cn/shuipf/Common/TagLib/Shuipf.class.php ( 41.07 KB )</li><li style="border-bottom:1px solid #EEE;font-size:14px;padding:0 12px">/www/wwwroot/DeviceMan.caeri.com.cn/#runtime/Cache/Home/c234761d51fe079e54e2d6b9a61ed24a.php ( 38.93 KB )</li><li style="border-bottom:1px solid #EEE;font-size:14px;padding:0 12px">/www/wwwroot/DeviceMan.caeri.com.cn/shuipf/Core/Library/Behavior/WriteHtmlCacheBehavior.class.php ( 0.95 KB )</li><li style="border-bottom:1px solid #EEE;font-size:14px;padding:0 12px">/www/wwwroot/DeviceMan.caeri.com.cn/shuipf/Core/Library/Behavior/ShowPageTraceBehavior.class.php ( 5.15 KB )</li>                    </ol>
+                </div>
+                            <div style="display:none;">
+                    <ol style="padding: 0; margin:0">
+                        <li style="border-bottom:1px solid #EEE;font-size:14px;padding:0 12px">[ app_init ] --START--</li><li style="border-bottom:1px solid #EEE;font-size:14px;padding:0 12px">Run Behavior\BuildLiteBehavior [ RunTime:0.000008s ]</li><li style="border-bottom:1px solid #EEE;font-size:14px;padding:0 12px">Run Common\Behavior\AppInitBehavior [ RunTime:0.000508s ]</li><li style="border-bottom:1px solid #EEE;font-size:14px;padding:0 12px">[ app_init ] --END-- [ RunTime:0.000582s ]</li><li style="border-bottom:1px solid #EEE;font-size:14px;padding:0 12px">[ app_begin ] --START--</li><li style="border-bottom:1px solid #EEE;font-size:14px;padding:0 12px">Run Behavior\ReadHtmlCacheBehavior [ RunTime:0.000415s ]</li><li style="border-bottom:1px solid #EEE;font-size:14px;padding:0 12px">Run Common\Behavior\AppBeginBehavior [ RunTime:0.000482s ]</li><li style="border-bottom:1px solid #EEE;font-size:14px;padding:0 12px">[ app_begin ] --END-- [ RunTime:0.000954s ]</li><li style="border-bottom:1px solid #EEE;font-size:14px;padding:0 12px">[ view_begin ] --START--</li><li style="border-bottom:1px solid #EEE;font-size:14px;padding:0 12px">Run Common\Behavior\ViewBeginBehavior [ RunTime:0.000232s ]</li><li style="border-bottom:1px solid #EEE;font-size:14px;padding:0 12px">[ view_begin ] --END-- [ RunTime:0.000279s ]</li><li style="border-bottom:1px solid #EEE;font-size:14px;padding:0 12px">[ view_parse ] --START--</li><li style="border-bottom:1px solid #EEE;font-size:14px;padding:0 12px">[ template_filter ] --START--</li><li style="border-bottom:1px solid #EEE;font-size:14px;padding:0 12px">Run Behavior\ContentReplaceBehavior [ RunTime:0.000135s ]</li><li style="border-bottom:1px solid #EEE;font-size:14px;padding:0 12px">[ template_filter ] --END-- [ RunTime:0.000186s ]</li><li style="border-bottom:1px solid #EEE;font-size:14px;padding:0 12px">Run Behavior\ParseTemplateBehavior [ RunTime:0.018907s ]</li><li style="border-bottom:1px solid #EEE;font-size:14px;padding:0 12px">[ view_parse ] --END-- [ RunTime:0.018943s ]</li><li style="border-bottom:1px solid #EEE;font-size:14px;padding:0 12px">[ view_filter ] --START--</li><li style="border-bottom:1px solid #EEE;font-size:14px;padding:0 12px">Run Behavior\WriteHtmlCacheBehavior [ RunTime:0.000215s ]</li><li style="border-bottom:1px solid #EEE;font-size:14px;padding:0 12px">[ view_filter ] --END-- [ RunTime:0.000248s ]</li><li style="border-bottom:1px solid #EEE;font-size:14px;padding:0 12px">[ app_end ] --START--</li>                    </ol>
+                </div>
+                            <div style="display:none;">
+                    <ol style="padding: 0; margin:0">
+                        <li style="border-bottom:1px solid #EEE;font-size:14px;padding:0 12px">[2] file_get_contents(/www/wwwroot/DeviceMan.caeri.com.cn/shuipf/Application/Home/View/Public/manage_footer.php): failed to open stream: No such file or directory /www/wwwroot/DeviceMan.caeri.com.cn/shuipf/Core/Library/Think/Template.class.php 第 696 行.</li><li style="border-bottom:1px solid #EEE;font-size:14px;padding:0 12px">[8] Undefined index: host /www/wwwroot/DeviceMan.caeri.com.cn/shuipf/Common/Common/corefun.php 第 895 行.</li><li style="border-bottom:1px solid #EEE;font-size:14px;padding:0 12px">[8] Undefined index: host /www/wwwroot/DeviceMan.caeri.com.cn/shuipf/Common/Common/corefun.php 第 895 行.</li><li style="border-bottom:1px solid #EEE;font-size:14px;padding:0 12px">[8] Undefined index: host /www/wwwroot/DeviceMan.caeri.com.cn/shuipf/Common/Common/corefun.php 第 895 行.</li><li style="border-bottom:1px solid #EEE;font-size:14px;padding:0 12px">[8] Undefined index: host /www/wwwroot/DeviceMan.caeri.com.cn/shuipf/Common/Common/corefun.php 第 895 行.</li><li style="border-bottom:1px solid #EEE;font-size:14px;padding:0 12px">[8] Undefined index: host /www/wwwroot/DeviceMan.caeri.com.cn/shuipf/Common/Common/corefun.php 第 895 行.</li><li style="border-bottom:1px solid #EEE;font-size:14px;padding:0 12px">[8] Undefined index: host /www/wwwroot/DeviceMan.caeri.com.cn/shuipf/Common/Common/corefun.php 第 895 行.</li><li style="border-bottom:1px solid #EEE;font-size:14px;padding:0 12px">[8] Undefined index: host /www/wwwroot/DeviceMan.caeri.com.cn/shuipf/Common/Common/corefun.php 第 895 行.</li><li style="border-bottom:1px solid #EEE;font-size:14px;padding:0 12px">[8] Undefined index: host /www/wwwroot/DeviceMan.caeri.com.cn/shuipf/Common/Common/corefun.php 第 895 行.</li><li style="border-bottom:1px solid #EEE;font-size:14px;padding:0 12px">[8] Undefined index: host /www/wwwroot/DeviceMan.caeri.com.cn/shuipf/Common/Common/corefun.php 第 895 行.</li><li style="border-bottom:1px solid #EEE;font-size:14px;padding:0 12px">[8] Undefined index: host /www/wwwroot/DeviceMan.caeri.com.cn/shuipf/Common/Common/corefun.php 第 895 行.</li><li style="border-bottom:1px solid #EEE;font-size:14px;padding:0 12px">[8] Undefined index: host /www/wwwroot/DeviceMan.caeri.com.cn/shuipf/Common/Common/corefun.php 第 895 行.</li><li style="border-bottom:1px solid #EEE;font-size:14px;padding:0 12px">[8] Undefined index: host /www/wwwroot/DeviceMan.caeri.com.cn/shuipf/Common/Common/corefun.php 第 895 行.</li><li style="border-bottom:1px solid #EEE;font-size:14px;padding:0 12px">[8] Undefined index: host /www/wwwroot/DeviceMan.caeri.com.cn/shuipf/Common/Common/corefun.php 第 895 行.</li><li style="border-bottom:1px solid #EEE;font-size:14px;padding:0 12px">[8] Undefined index: host /www/wwwroot/DeviceMan.caeri.com.cn/shuipf/Common/Common/corefun.php 第 895 行.</li><li style="border-bottom:1px solid #EEE;font-size:14px;padding:0 12px">[8] Undefined index: host /www/wwwroot/DeviceMan.caeri.com.cn/shuipf/Common/Common/corefun.php 第 895 行.</li>                    </ol>
+                </div>
+                            <div style="display:none;">
+                    <ol style="padding: 0; margin:0">
+                                            </ol>
+                </div>
+                            <div style="display:none;">
+                    <ol style="padding: 0; margin:0">
+                                            </ol>
+                </div>
+                    </div>
+    </div>
+    <div id="think_page_trace_close" style="display:none;text-align:right;height:15px;position:absolute;top:10px;right:12px;cursor: pointer;"><img style="vertical-align:top;" src="data:image/gif;base64,R0lGODlhDwAPAJEAAAAAAAMDA////wAAACH/C1hNUCBEYXRhWE1QPD94cGFja2V0IGJlZ2luPSLvu78iIGlkPSJXNU0wTXBDZWhpSHpyZVN6TlRjemtjOWQiPz4gPHg6eG1wbWV0YSB4bWxuczp4PSJhZG9iZTpuczptZXRhLyIgeDp4bXB0az0iQWRvYmUgWE1QIENvcmUgNS4wLWMwNjAgNjEuMTM0Nzc3LCAyMDEwLzAyLzEyLTE3OjMyOjAwICAgICAgICAiPiA8cmRmOlJERiB4bWxuczpyZGY9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkvMDIvMjItcmRmLXN5bnRheC1ucyMiPiA8cmRmOkRlc2NyaXB0aW9uIHJkZjphYm91dD0iIiB4bWxuczp4bXA9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC8iIHhtbG5zOnhtcE1NPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvbW0vIiB4bWxuczpzdFJlZj0iaHR0cDovL25zLmFkb2JlLmNvbS94YXAvMS4wL3NUeXBlL1Jlc291cmNlUmVmIyIgeG1wOkNyZWF0b3JUb29sPSJBZG9iZSBQaG90b3Nob3AgQ1M1IFdpbmRvd3MiIHhtcE1NOkluc3RhbmNlSUQ9InhtcC5paWQ6MUQxMjc1MUJCQUJDMTFFMTk0OUVGRjc3QzU4RURFNkEiIHhtcE1NOkRvY3VtZW50SUQ9InhtcC5kaWQ6MUQxMjc1MUNCQUJDMTFFMTk0OUVGRjc3QzU4RURFNkEiPiA8eG1wTU06RGVyaXZlZEZyb20gc3RSZWY6aW5zdGFuY2VJRD0ieG1wLmlpZDoxRDEyNzUxOUJBQkMxMUUxOTQ5RUZGNzdDNThFREU2QSIgc3RSZWY6ZG9jdW1lbnRJRD0ieG1wLmRpZDoxRDEyNzUxQUJBQkMxMUUxOTQ5RUZGNzdDNThFREU2QSIvPiA8L3JkZjpEZXNjcmlwdGlvbj4gPC9yZGY6UkRGPiA8L3g6eG1wbWV0YT4gPD94cGFja2V0IGVuZD0iciI/PgH//v38+/r5+Pf29fTz8vHw7+7t7Ovq6ejn5uXk4+Lh4N/e3dzb2tnY19bV1NPS0dDPzs3My8rJyMfGxcTDwsHAv769vLu6ubi3trW0s7KxsK+urayrqqmop6alpKOioaCfnp2cm5qZmJeWlZSTkpGQj46NjIuKiYiHhoWEg4KBgH9+fXx7enl4d3Z1dHNycXBvbm1sa2ppaGdmZWRjYmFgX15dXFtaWVhXVlVUU1JRUE9OTUxLSklIR0ZFRENCQUA/Pj08Ozo5ODc2NTQzMjEwLy4tLCsqKSgnJiUkIyIhIB8eHRwbGhkYFxYVFBMSERAPDg0MCwoJCAcGBQQDAgEAACH5BAAAAAAALAAAAAAPAA8AAAIdjI6JZqotoJPR1fnsgRR3C2jZl3Ai9aWZZooV+RQAOw==" /></div>
+</div>
+<div id="think_page_trace_open" style="height:30px;float:right;text-align: right;overflow:hidden;position:fixed;bottom:0;right:0;color:#000;line-height:30px;cursor:pointer;"><div style="background:#232323;color:#FFF;padding:0 6px;float:right;line-height:30px;font-size:14px">0.0486s </div><img width="30" style="" title="ShowPageTrace" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAB4AAAAeCAYAAAA7MK6iAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAABrFJREFUeNqcV2lsFVUUPneZmbe1r4/XxZa2UupSiYobEoIGo4kxKImIGtd/Go3+VH+YuEQTfsEPY2JiYjQRTYiKkSUSTXBpUImKqIhxKW2hCrQUur5lZu7muTN9pYVXaL3JffNy597z3XPOd5YhS5/evh4AemBegxj8kTg1gKms2R8WT0PmJwfaOP78gfPP8+0yhgEhCij1LVDSGJ4xhsawuE6ImMR/vtYe2HW7doExYYH53O9ROApx3eEWFH6fMe5apVJXGgPZ6UtZNYkZY7R0kDuju4xxPhZhbjg2gp5LsDMHKIkm4xNZxorPKpV+QslFDbHmJoarmBrXtEpllEy3EirXcjb5ousNvqFUzWtK1pZm7Z2tUjVQA653YhVq+V0YXPSCErUNFbPGWswUZKK16B26WIhcSxg0b6Q02Ot6Q9dUlDh78HNBAbzEv3dKWbdViroaQmTEKY3ytbZPU+X+M0dsXl/UX+c4Y3sYH9gQ+C3deCyS7nLLgSrAaKbVUiz6UMqaVCBDEEoDZwQyHoeajAtpl6GDKND58NfU5pkz+gmj+kEt80cp1WzgVKm3ECjNZzLX9U7mwfAtRT+TQqPB8vYsrOlqgGuX1MHF+RTkUg4kEJgjKiHzQrYszyHgZw5jatKXY3du/uaS8bJUvKIpZQEw5r8yMt6ytLPRgxfuvgZuW9YIjofstHZGzU3kZ1LNZRcYKMNlrOfI+C8DI+Uxh5FFPNaWguuMXFoo1T7W2ZiBrU+vgLamNIiyhKAs0KwkuoAMFJyc8GEc15Q2C4J2Ewx2Hzy6Q0gkLiMkAqZUojb6EaUy3qsbuiLQoCRi2iOozUdvfdEH2/cfg39GylAOVUSyhQ7HO0bSicVRIGA4UU0pCgucdTcsycMtVzREmp7ZzOCd7iPw3NaD8PPRMZhAbaWeYvlCpmZo2cS9DLEQ03BjiCBUNAe+e/nKzhxQJI+Y0pbEIQ3f/n0K2R3HQ/SsElA2yMgUX+w5aymGJJxmP4ak0YkrCfXzRmYEx0wUoI+XG81T2RSfFezWmgpJ9fy6LrioLgGHBwuRtuSs9BHFJaWR+SVeLBAKxn0JI4UQJtFCnoMRwyywkyNMrkTM/YhktFbpNCUafuwbidDsxhAPR6VIaljWUgObHl4OSugoiVRLdlYze1E77eVKoYSh8QC6/zoFb33VB8MTIcp1QEmWsZgsd+MDtXiwFePs/p6hAkwUBXQhUDbjAbcxy+mUzS0J0XyMVp10ao8FtvuSeLYpm4AVXfVwc2cedv86GF0G332EAo9we1dGJ4XWCcxIHN78sg92HDgONyzNwVWtWVicS4J1gcvoLPPG/ovVtLGdRhI24956zG4hWskmTqmUJQUs68jB7Vc1wXvf9oDnKoHFg1hyuUiu31GXkCjHtQJGiiHsOnACdvx0fJokZycqUkkmsZen0+rL66+Ae1a2QRjImQUdajwHt4kipeKANMRDucbFwt6P1aS/QhubEu0FahI8eiYcGiX3mdPmawvGWfy0Ju49WYT9/aNA2JlbRpdDC/QMFvFM+JdWyQHEtPVYM6ynWsDgzlI581xcbxc+rGWubquFh1a1gxZnGgAXL91zYhJ+6D8NKS/8XIlFtoLRKHOFksIDq7pGm7L1yOL5g9nYtYDZpAMdDWm4vqMO8khKG05xmxETc/PuXigEo2E2Q7YI7US1myP1FZqUPXPHisebGlNRMfhfw2YzNKnAacMRUNMiRsjGjw5FZM1lC++LsP5PQmL5PBDav+my7HIE7YhAK41itGEBZcjGMvrWR20Po6/3Yrb7YN8/cOjfAobm5LDR3ktKJacbQeQGYaE04u09va9KDCoNhUY/pE8Z452vWZtBHoAAK854KYRBTBgDp0vRHMe06zAOtelQc154LPAXH5vZffKkS5Pf94789vUfw79ZBhKCGSZxoj/wmzfZ2J5Hq3qm6hIyxXQbWh4mljJ2qENPBn7rznN6LttCYWEGJ1lpRtII1r45nR0eVrLmdSmytbFfzLxtbus7d8aGGS88haDbMFzPsR6t1qwZjdnHb36XsdJqL3H8U0LDaKuJtp/dNZJpMLsH8wFa7Pg2SsPVod+yzbZU1VzG5+4UCaC5DzFevAtvvwZJ9yh+KdyKJFmCGpDZXxISa3rQR1l5Dy5tkSK3LybS3JbiU99CVaPUCsXkYmc39tjdlJVc/Iy5TBunE2urQ+weGgSYBntQs8MizEv8kpg+e54hLXAHTnGhPtn6Cf0t0bCnsagP2RWbYo1KES2JRWvFdTafSMDR/p8AAwAOLzg6eCCEogAAAABJRU5ErkJggg=="></div>
+<script type="text/javascript">
+    (function() {
+        var tab_tit = document.getElementById('think_page_trace_tab_tit').getElementsByTagName('span');
+        var tab_cont = document.getElementById('think_page_trace_tab_cont').getElementsByTagName('div');
+        var open = document.getElementById('think_page_trace_open');
+        var close = document.getElementById('think_page_trace_close').childNodes[0];
+        var trace = document.getElementById('think_page_trace_tab');
+        var cookie = document.cookie.match(/thinkphp_show_page_trace=(\d\|\d)/);
+        var history = (cookie && typeof cookie[1] != 'undefined' && cookie[1].split('|')) || [0, 0];
+        open.onclick = function() {
+            trace.style.display = 'block';
+            this.style.display = 'none';
+            close.parentNode.style.display = 'block';
+            history[0] = 1;
+            document.cookie = 'thinkphp_show_page_trace=' + history.join('|')
+        }
+        close.onclick = function() {
+            trace.style.display = 'none';
+            this.parentNode.style.display = 'none';
+            open.style.display = 'block';
+            history[0] = 0;
+            document.cookie = 'thinkphp_show_page_trace=' + history.join('|')
+        }
+        for (var i = 0; i < tab_tit.length; i++) {
+            tab_tit[i].onclick = (function(i) {
+                return function() {
+                    for (var j = 0; j < tab_cont.length; j++) {
+                        tab_cont[j].style.display = 'none';
+                        tab_tit[j].style.color = '#999';
+                    }
+                    tab_cont[i].style.display = 'block';
+                    tab_tit[i].style.color = '#000';
+                    history[1] = i;
+                    document.cookie = 'thinkphp_show_page_trace=' + history.join('|')
+                }
+            })(i)
+        }
+        parseInt(history[0]) && open.click();
+        (tab_tit[history[1]] || tab_tit[0]).click();
+    })();
+</script>

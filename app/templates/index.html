@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <link rel="stylesheet" href={{ url_for('static',filename='/jexcel/css/jsuites.css') }}/>
+    <link rel="stylesheet" href={{ url_for('static',filename='/jexcel/css/jexcel.css') }}/>
+    <link rel="stylesheet" href={{ url_for('static',filename='/css/select2.min.css') }}/>
+    <link rel="stylesheet" href={{ url_for('static',filename='style.css') }}/>
+    <script src="{{ url_for('static',filename='/jexcel/js/jexcel.js') }}"></script>
+    <script src="{{ url_for('static',filename='/jexcel/js/jsuites.js') }}"></script>
+    <script src="{{ url_for('static',filename='/js/jquery-3.4.1.min.js') }}"></script>
+    <script src="{{ url_for('static',filename='/js/select2.min.js') }}"></script>
+    <title>CAERI-发动机排放</title>
+</head>
+<body>
+<h1>设备登记扩展</h1>
+<div class="line"><i></i></div>
+<div id="init">
+    <div id="init_left">
+        <div class="devInfo">
+            <label for="deviceID">
+                设备ID
+                <select class="js-select-num" id="select-num" style="width: 20%" >
+                    <option></option>
+                    {% for num in device_info.values() %}
+                        <option>{{ num }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+{#            <label for="deviceName">#}
+{#                设备名称#}
+{#                <select class="js-select-name" id="select-name" style="width: 20%">#}
+{#                    <option></option>#}
+{#                    {% for name in device_info.keys() %}#}
+{#                        <option>{{ name }}</option>#}
+{#                    {% endfor %}#}
+{#                </select>#}
+{#            </label>#}
+        </div>
+        <div class="button_contain">
+            <a id="qrcode_req" href="#" class="hbtn hb-border-bottom-br4 hbor1 hpad3"
+               onclick="document.getElementById('id01').style.display='block'">
+                <i class="fa fa-magic" aria-hidden="true"></i>
+                登录
+            </a>
+            <a href="#" class="hbtn hb-border-bottom-br4 hbor1 hpad3"
+               onclick="document.getElementById('id02').style.display='block'">
+                <i class="fa fa-magic" aria-hidden="true"></i>
+                提交表单
+            </a>
+        </div>
+        <div id="tableData"></div>
+    </div>
+</div>
+<div id="id01" class="modal">
+    <form class="modal-content animate">
+        <div class="imgcontainer">
+            <!-- 点击×号，隐藏模态框-->
+            <span onclick="clear_dialog()" class="close" title="Close Modal">&times;</span>
+            <img id="qr_img" src="{{ url_for('static', filename='/image/loading.gif') }}" alt="二维码加载失败！" class="avatar">
+            <h4 id="welcome"></h4>
+        </div>
+        <div class="container" style="background-color:#f1f1f1">
+            <!-- 点击cancel按钮，把模态框隐藏-->
+            <button type="button" onclick="clear_dialog()" class="cancelbtn">
+                Cancel
+            </button>
+            <button type="button" class="psw" id="qrcode_refresh" >
+                Refresh
+            </button>
+        </div>
+    </form>
+</div>
+<div id="id02" class="modal">
+    <form class="modal-content animate">
+        <div class="msgcontainer">
+            <!-- 点击×号，隐藏模态框-->
+            <p class="avatar">是否上传？</p>
+            <span onclick="document.getElementById('id02').style.display='none'" class="close" title="Close Modal">&times;</span>
+        </div>
+        <div class="dialog_container" style="background-color:#f1f1f1">
+            <!-- 点击cancel按钮，把模态框隐藏-->
+            <!-- 点击yes按钮，提交表单-->
+            <button type="button" onclick="document.getElementById('id02').style.display='none'" class="submitbtn"
+                    id="send_table">
+                Yes
+            </button>
+            <button type="button" onclick="document.getElementById('id02').style.display='none'" class="cancelbtn">
+                Cancel
+            </button>
+        </div>
+    </form>
+</div>
+</body>
+<script>
+    var data = [
+        ['ZPJ107', '智能大气压力计', '发动机排放检测部', '2019-02-12', '8', '12', 'W19009313 - 发动机 - 东风康明斯发动机有限公司', '', '发动机排放检测部', '排气污染物', ''],
+    ];
+    for (var i = 0; i < 20; i++) data.push([]);
+    var hour = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24];
+
+    var mytable = jexcel(document.getElementById('tableData'), {
+        data: data,
+        columns: [
+            {type: 'text', title: '设备编号', width: 100},
+            {type: 'text', title: '设备名称', width: 300},
+            {type: 'text', title: '部门', width: 140, source: []},
+            {type: 'calendar', title: '日期', width: 100, options: {format: 'YYYY/MM/DD'}},
+            {type: 'dropdown', title: '几点开始', width: 80, source: hour,},
+            {type: 'dropdown', title: '耗时', width: 80, source: hour,},
+            {type: 'text', title: '任务名称', width: 400},
+            {type: 'text', title: '使用人', width: 80},
+            {type: 'text', title: '使用地点', width: 140},
+            {type: 'text', title: '项目', width: 140},
+            {type: 'text', title: '备注', width: 80},
+        ]
+    });
+    //=====================================================================
+    // qrcode 请求和刷新,验证登录是否成功
+    check_login("qrcode_req", "login", "qr_img");
+    check_login("qrcode_refresh", "login", "qr_img");
+    check_login("qrcode_req", "check_login", "qr_img");
+    check_login("qrcode_refresh", "check_login", "qr_img");
+    function check_login(obj_id, views, elem_id) {
+        /*
+        *@param{str} obj    : 触发对象
+        *@param{str} views  : 请求目标试图
+        *@param{str} elem_id: 执行对象
+        *@return: check if correct, return login status image
+        */
+        $("#" + obj_id).click(function () {
+            $.ajax({
+                url: views,   //对应flask中的路由
+                type: "GET", //请求方法
+                data: {},//传送的数据,需要转换为字符串
+                contentType: false,
+                {#async:false, //强制同步进行,按顺序进行#}
+                success: function (data) {  //成功得到返回数据后回调的函数
+                    var set_img = document.getElementById(elem_id);
+                    set_img.setAttribute('src', data['url']);
+                    if (data.hasOwnProperty('userinfo')){
+                        document.getElementById('welcome').innerHTML="%".replace("%", data.userinfo.username);
+                        mytable.setColumnData(7, [data.userinfo.username]);
+                    }
+                },
+                error: function (e) {
+                    {#alert("验证失败!");#}
+                }
+            })
+        });
+    }
+    //=====================================================================
+    // 返回table数据+以及用户名
+    $("#send_table").click(function () {
+        var send_data = mytable.getJson();
+        var username = document.getElementById('welcome').innerHTML;
+        if( username !== ""){
+            send_data.push({"username": username})
+        }
+
+        $.ajax({
+            url: "{{ url_for("send_table") }}",   //对应flask中的路由
+            type: "POST", //请求方法
+            data: JSON.stringify(send_data),   //传送的数据,需要转换为字符串
+            contentType: 'application/json; charset=UTF-8',
+            dataType: "json", //传送的数据类型 注意：这里是指希望服务端返回json格式的数据
+            success: function (data) {  //成功得到返回数据后回调的函数
+                console.log(data)
+            }
+        })
+    });
+    //=====================================================================
+    //设置下拉框属性
+    $(document).ready(function () {
+    {#    $('.js-select-name').select2({#}
+    {#        placeholder: "选择,也可查找",#}
+            {#theme: "classic",#}
+    {#        allowClear: true,#}
+    {#        width: 'resolve',// need to override the changed default#}
+    {#        tags: true,#}
+        //});
+        $('.js-select-num').select2({
+            placeholder: "查找设备编号",
+            {#theme: "classic",#}
+            allowClear: true,
+            width: 'resolve',// need to override the changed default
+            tags: true,
+        });
+    });
+    // 根据所选数据填充示例首行
+    var $eventSelectNum = $('#select-num');
+    var $eventSelectName = $('#select-name');
+
+    $eventSelectNum.on('select2:select', function (e) {
+        choose_data = [$eventSelectNum.select2('val')];
+        request_home(choose_data, 0);
+    });
+    {#$eventSelectName.on('select2:select', function (e) {#}
+    {#    var choose_data = [$eventSelectName.select2('val')];#}
+    {#    request_home(choose_data, 1)#}
+    //});
+    // 根据选择项目查找对应的字典
+    function request_home(who, col) {
+        mytable.setColumnData(col, who);
+        $.ajax({
+            url: "{{ url_for("select_dev_num") }}",   //对应flask中的路由
+            type: "POST", //请求方法
+            data: JSON.stringify(who),   //传送的数据,需要转换为字符串
+            contentType: 'application/json; charset=UTF-8',
+            dataType: "json", //传送的数据类型 注意：这里是指希望服务端返回json格式的数据
+            success: function (data) {  //成功得到返回数据后回调的函数
+                var set_data = [data.val];
+                mytable.setColumnData((col + 1) % 2, set_data);
+            }
+        });
+    }
+    //=====================================================================
+    // 关闭弹窗
+    function clear_dialog() {
+        document.getElementById('id01').style.display = 'none';
+        document.getElementById('qr_img').setAttribute('src', "#");
+    }
+
+</script>
+
+</html>
